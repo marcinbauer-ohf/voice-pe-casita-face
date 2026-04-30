@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>16x8 LED Matrix Sprite Editor</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #1a1a2e; color: #e0e0e0; padding: 20px; }
+  h1 { font-size: 1.3em; margin-bottom: 16px; color: #fff; }
+
+  .layout { display: flex; gap: 20px; flex-wrap: wrap; }
+  .left-panel { flex: 0 0 auto; }
+  .right-panel { flex: 1; min-width: 280px; }
+
+  /* Grid */
+  .grid-wrap { background: #333; padding: 1px; border-radius: 6px; display: inline-block; }
+  .grid { display: grid; grid-template-columns: repeat(16, 36px); grid-template-rows: repeat(8, 36px); gap: 1px; background: #333; }
+  .cell { width: 36px; height: 36px; background: #000; cursor: crosshair; transition: background 0.05s; }
+  .cell:hover { outline: 2px solid rgba(255,255,255,0.5); outline-offset: -2px; }
+  .cell.onion { background-blend-mode: normal; }
+
+  /* Toolbar */
+  .toolbar { display: flex; gap: 8px; margin: 12px 0; align-items: center; flex-wrap: wrap; }
+  .toolbar label { font-size: 0.85em; color: #aaa; }
+  .btn { padding: 6px 14px; border: 1px solid #444; border-radius: 4px; background: #2a2a3e; color: #e0e0e0; cursor: pointer; font-size: 0.85em; }
+  .btn:hover { background: #3a3a5e; }
+  .btn.active { background: #5a5aff; border-color: #7a7aff; }
+  .btn.danger { border-color: #a33; }
+  .btn.danger:hover { background: #a33; }
+  .btn.copy { background: #2a6e2a; border-color: #3a8e3a; }
+  .btn.copy:hover { background: #3a8e3a; }
+  input[type="color"] { width: 40px; height: 32px; border: 1px solid #444; border-radius: 4px; cursor: pointer; background: #2a2a3e; }
+  input[type="number"], input[type="text"] { padding: 5px 8px; border: 1px solid #444; border-radius: 4px; background: #2a2a3e; color: #e0e0e0; font-size: 0.85em; }
+  input[type="number"] { width: 60px; }
+  input[type="text"] { width: 160px; }
+
+  /* Frames panel */
+  .frames-panel { margin-top: 16px; }
+  .frames-panel h3 { font-size: 0.95em; margin-bottom: 8px; }
+  .frame-list { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .frame-thumb { width: 64px; height: 32px; border: 2px solid #444; border-radius: 4px; cursor: pointer; image-rendering: pixelated; }
+  .frame-thumb.active { border-color: #5a5aff; }
+  .frame-thumb:hover { border-color: #888; }
+  .frame-controls { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+
+  /* Preview */
+  .preview-section { margin-top: 16px; }
+  .preview-canvas { background: #000; border-radius: 4px; image-rendering: pixelated; display: block; }
+
+  /* Export */
+  .export-section { margin-top: 16px; }
+  .export-section textarea { width: 100%; height: 120px; background: #111; color: #0f0; border: 1px solid #444; border-radius: 4px; font-family: monospace; font-size: 0.75em; padding: 8px; resize: vertical; }
+  .toast { position: fixed; top: 20px; right: 20px; padding: 10px 20px; background: #3a8e3a; color: #fff; border-radius: 6px; font-size: 0.9em; opacity: 0; transition: opacity 0.3s; z-index: 100; }
+  .toast.show { opacity: 1; }
+
+  /* Color palette */
+  .palette { display: flex; gap: 4px; flex-wrap: wrap; margin: 8px 0; }
+  .palette-color { width: 24px; height: 24px; border: 2px solid #444; border-radius: 3px; cursor: pointer; }
+  .palette-color:hover { border-color: #aaa; }
+  .palette-color.active { border-color: #fff; }
+
+  /* Library */
+  .library-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; max-height: 240px; overflow-y: auto; }
+  .library-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: #2a2a3e; border: 1px solid #444; border-radius: 4px; cursor: pointer; }
+  .library-item:hover { border-color: #888; }
+  .library-item canvas { image-rendering: pixelated; border-radius: 2px; flex-shrink: 0; }
+  .library-item .lib-name { flex: 1; font-size: 0.85em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .library-item .lib-info { font-size: 0.75em; color: #888; white-space: nowrap; }
+  .library-item .lib-actions { display: flex; gap: 4px; }
+  .library-item .lib-actions button { padding: 2px 6px; font-size: 0.75em; }
+
+  /* Onion skin toggle */
+  .checkbox-label { display: flex; align-items: center; gap: 4px; font-size: 0.85em; color: #aaa; cursor: pointer; }
+  .checkbox-label input { cursor: pointer; }
+</style>
+</head>
+<body>
+
+<h1>LED Matrix Sprite Editor (16x8)</h1>
+
+<div class="layout">
+  <div class="left-panel">
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <input type="color" id="colorPicker" value="#ff0000">
+      <button class="btn active" id="btnPaint" onclick="setTool('paint')">Paint</button>
+      <button class="btn" id="btnEraser" onclick="setTool('eraser')">Eraser</button>
+      <button class="btn" id="btnEyedrop" onclick="setTool('eyedrop')">Eyedropper</button>
+      <button class="btn" id="btnFill" onclick="setTool('fill')">Fill</button>
+      <button class="btn danger" onclick="clearFrame()">Clear</button>
+      <span style="color:#555;">|</span>
+      <button class="btn" onclick="undo()" title="Undo (Ctrl+Z)">Undo</button>
+      <button class="btn" onclick="redo()" title="Redo (Ctrl+Shift+Z)">Redo</button>
+      <span style="color:#555;">|</span>
+      <button class="btn" onclick="shiftFrame(0,-1)" title="Shift Up">&#9650;</button>
+      <button class="btn" onclick="shiftFrame(0,1)" title="Shift Down">&#9660;</button>
+      <button class="btn" onclick="shiftFrame(-1,0)" title="Shift Left">&#9664;</button>
+      <button class="btn" onclick="shiftFrame(1,0)" title="Shift Right">&#9654;</button>
+    </div>
+
+    <!-- Quick palette -->
+    <div class="palette" id="palette"></div>
+
+    <!-- Pixel grid -->
+    <div class="grid-wrap">
+      <div class="grid" id="grid"></div>
+    </div>
+
+    <!-- Onion skin -->
+    <div class="toolbar">
+      <label class="checkbox-label">
+        <input type="checkbox" id="onionSkin"> Onion skin (show previous frame)
+      </label>
+    </div>
+
+    <!-- Glow effect -->
+    <div class="toolbar">
+      <label class="checkbox-label">
+        <input type="checkbox" id="glowEffect"> Glow (50% brightness halo)
+      </label>
+    </div>
+  </div>
+
+  <div class="right-panel">
+    <!-- Frames -->
+    <div class="frames-panel">
+      <h3>Frames</h3>
+      <div class="frame-list" id="frameList"></div>
+      <div class="frame-controls">
+        <button class="btn" onclick="addFrame()">+ Add</button>
+        <button class="btn" onclick="dupFrame()">Duplicate</button>
+        <button class="btn danger" onclick="delFrame()">Delete</button>
+        <button class="btn" onclick="moveFrame(-1)">Move Left</button>
+        <button class="btn" onclick="moveFrame(1)">Move Right</button>
+      </div>
+      <div class="toolbar">
+        <label>Frame delay (ms):</label>
+        <input type="number" id="frameMs" value="200" min="50" max="2000" step="50">
+        <label class="checkbox-label">
+          <input type="checkbox" id="fadeFrames"> Crossfade between frames
+        </label>
+      </div>
+    </div>
+
+    <!-- Preview -->
+    <div class="preview-section">
+      <h3 style="font-size:0.95em; margin-bottom:8px;">Preview</h3>
+      <canvas id="previewCanvas" class="preview-canvas" width="256" height="128"></canvas>
+      <div class="toolbar">
+        <button class="btn" id="btnPlay" onclick="togglePlay()">Play</button>
+        <button class="btn" onclick="prevFrame()">Prev</button>
+        <button class="btn" onclick="nextFrame()">Next</button>
+        <span style="font-size:0.85em; color:#aaa;" id="frameInfo">Frame 1/1</span>
+      </div>
+    </div>
+
+    <!-- Saved Sprites Library -->
+    <div class="library-section" style="margin-top:16px;">
+      <h3 style="font-size:0.95em; margin-bottom:8px;">Saved Sprites</h3>
+      <div class="toolbar">
+        <button class="btn danger" onclick="newSprite()">+ New</button>
+        <button class="btn copy" onclick="saveSprite()">Save Current</button>
+        <button class="btn" onclick="exportLibrary()">Export All (JSON)</button>
+        <button class="btn" onclick="document.getElementById('importFile').click()">Import JSON</button>
+        <input type="file" id="importFile" accept=".json" style="display:none" onchange="importLibrary(event)">
+        <button class="btn" onclick="document.getElementById('importHeaderFile').click()" title="Import all faces from led_faces.h into library">Import led_faces.h</button>
+        <input type="file" id="importHeaderFile" accept=".h,.hpp" style="display:none" onchange="importFromHeader(event)">
+      </div>
+      <div id="libraryList" class="library-list"></div>
+    </div>
+
+    <!-- Export -->
+    <div class="export-section">
+      <h3 style="font-size:0.95em; margin-bottom:8px;">Export</h3>
+      <div class="toolbar">
+        <label>Sprite name:</label>
+        <input type="text" id="spriteName" value="My Sprite" placeholder="Effect name">
+      </div>
+      <div class="toolbar">
+        <button class="btn copy" onclick="copyServiceCall()">Copy Service Call</button>
+        <button class="btn copy" onclick="copyAutomation()">Copy HA Automation</button>
+        <button class="btn copy" onclick="copyFaceCode()">Copy led_faces.h Code</button>
+      </div>
+      <textarea id="exportOutput" readonly placeholder="Export output will appear here..."></textarea>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const W = 16, H = 8;
+let frames = [makeBlankFrame()];
+let curFrame = 0;
+let tool = 'paint';
+let painting = false;
+let playing = false;
+let playTimer = null;
+let undoStack = [];
+let redoStack = [];
+const MAX_UNDO = 50;
+
+const defaultPalette = [
+  '#000000','#ffffff','#18bcf2','#ff2200','#00cc44','#ff8800',
+  '#ff0000','#00ff00','#0000ff','#ffff00','#ff00ff','#00ffff',
+  '#884400','#448800','#004488','#880044'
+];
+
+// --- Init ---
+function init() {
+  buildGrid();
+  buildPalette();
+  renderGrid();
+  renderFrameList();
+  renderPreview();
+}
+
+function makeBlankFrame() {
+  return new Array(W * H).fill('#000000');
+}
+
+// --- Undo / Redo ---
+function snapshot() {
+  return { frames: frames.map(f => [...f]), curFrame };
+}
+
+function restoreSnapshot(s) {
+  frames = s.frames.map(f => [...f]);
+  curFrame = Math.min(s.curFrame, frames.length - 1);
+  renderGrid();
+}
+
+function saveUndo() {
+  undoStack.push(snapshot());
+  if (undoStack.length > MAX_UNDO) undoStack.shift();
+  redoStack = [];
+}
+
+function undo() {
+  if (undoStack.length === 0) return;
+  redoStack.push(snapshot());
+  restoreSnapshot(undoStack.pop());
+}
+
+function redo() {
+  if (redoStack.length === 0) return;
+  undoStack.push(snapshot());
+  restoreSnapshot(redoStack.pop());
+}
+
+// --- Grid ---
+function buildGrid() {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  for (let i = 0; i < W * H; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.dataset.idx = i;
+    cell.addEventListener('mousedown', (e) => { e.preventDefault(); saveUndo(); painting = true; applyTool(i, e); });
+    cell.addEventListener('mouseenter', () => { if (painting) applyTool(i); });
+    cell.addEventListener('contextmenu', (e) => { e.preventDefault(); saveUndo(); frames[curFrame][i] = '#000000'; renderGrid(); });
+    grid.appendChild(cell);
+  }
+  document.addEventListener('mouseup', () => { painting = false; });
+}
+
+function buildPalette() {
+  const pal = document.getElementById('palette');
+  pal.innerHTML = '';
+  defaultPalette.forEach(c => {
+    const el = document.createElement('div');
+    el.className = 'palette-color' + (c === document.getElementById('colorPicker').value ? ' active' : '');
+    el.style.background = c;
+    el.onclick = () => {
+      document.getElementById('colorPicker').value = c;
+      document.querySelectorAll('.palette-color').forEach(p => p.classList.remove('active'));
+      el.classList.add('active');
+    };
+    pal.appendChild(el);
+  });
+}
+
+function renderGrid() {
+  const cells = document.querySelectorAll('.cell');
+  const frame = frames[curFrame];
+  const showOnion = document.getElementById('onionSkin').checked && curFrame > 0;
+  const prevFrameData = showOnion ? frames[curFrame - 1] : null;
+
+  cells.forEach((cell, i) => {
+    const color = frame[i];
+    if (color === '#000000' && prevFrameData && prevFrameData[i] !== '#000000') {
+      // Show previous frame pixel dimmed
+      const pc = prevFrameData[i];
+      const r = parseInt(pc.slice(1,3), 16);
+      const g = parseInt(pc.slice(3,5), 16);
+      const b = parseInt(pc.slice(5,7), 16);
+      cell.style.background = `rgba(${r},${g},${b},0.25)`;
+    } else {
+      cell.style.background = color;
+    }
+  });
+  renderPreview();
+  renderFrameList();
+  document.getElementById('frameInfo').textContent = `Frame ${curFrame + 1}/${frames.length}`;
+}
+
+// --- Tools ---
+function setTool(t) {
+  tool = t;
+  ['Paint','Eraser','Eyedrop','Fill'].forEach(n => {
+    document.getElementById('btn' + n).classList.toggle('active', n.toLowerCase() === t);
+  });
+}
+
+function applyTool(idx, e) {
+  const color = document.getElementById('colorPicker').value;
+  if (tool === 'paint') {
+    frames[curFrame][idx] = color;
+    renderGrid();
+  } else if (tool === 'eraser') {
+    frames[curFrame][idx] = '#000000';
+    renderGrid();
+  } else if (tool === 'eyedrop') {
+    document.getElementById('colorPicker').value = frames[curFrame][idx];
+    document.querySelectorAll('.palette-color').forEach(p => p.classList.remove('active'));
+    setTool('paint');
+  } else if (tool === 'fill') {
+    floodFill(idx, frames[curFrame][idx], color);
+    renderGrid();
+  }
+}
+
+function floodFill(idx, target, replacement) {
+  if (target === replacement) return;
+  const frame = frames[curFrame];
+  const stack = [idx];
+  while (stack.length) {
+    const i = stack.pop();
+    if (i < 0 || i >= W * H || frame[i] !== target) continue;
+    frame[i] = replacement;
+    const x = i % W, y = Math.floor(i / W);
+    if (x > 0) stack.push(i - 1);
+    if (x < W - 1) stack.push(i + 1);
+    if (y > 0) stack.push(i - W);
+    if (y < H - 1) stack.push(i + W);
+  }
+}
+
+// --- Frames ---
+function addFrame() { saveUndo(); frames.splice(curFrame + 1, 0, makeBlankFrame()); curFrame++; renderGrid(); }
+function dupFrame() { saveUndo(); frames.splice(curFrame + 1, 0, [...frames[curFrame]]); curFrame++; renderGrid(); }
+function delFrame() { if (frames.length <= 1) return; saveUndo(); frames.splice(curFrame, 1); if (curFrame >= frames.length) curFrame = frames.length - 1; renderGrid(); }
+function moveFrame(dir) {
+  const newIdx = curFrame + dir;
+  if (newIdx < 0 || newIdx >= frames.length) return;
+  saveUndo();
+  [frames[curFrame], frames[newIdx]] = [frames[newIdx], frames[curFrame]];
+  curFrame = newIdx;
+  renderGrid();
+}
+function prevFrame() { if (curFrame > 0) { curFrame--; renderGrid(); } }
+function nextFrame() { if (curFrame < frames.length - 1) { curFrame++; renderGrid(); } }
+function clearFrame() { saveUndo(); frames[curFrame] = makeBlankFrame(); renderGrid(); }
+function shiftFrame(dx, dy) {
+  saveUndo();
+  const old = frames[curFrame];
+  const next = makeBlankFrame();
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const sx = x - dx, sy = y - dy;
+      if (sx >= 0 && sx < W && sy >= 0 && sy < H) {
+        next[y * W + x] = old[sy * W + sx];
+      }
+    }
+  }
+  frames[curFrame] = next;
+  renderGrid();
+}
+
+function selectFrame(idx) { curFrame = idx; renderGrid(); }
+
+let dragSrcIdx = null;
+
+function renderFrameList() {
+  const list = document.getElementById('frameList');
+  list.innerHTML = '';
+  frames.forEach((frame, fi) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    canvas.className = 'frame-thumb' + (fi === curFrame ? ' active' : '');
+    canvas.title = `Frame ${fi + 1} — drag to reorder`;
+    canvas.draggable = true;
+
+    // Click to select
+    canvas.onclick = () => selectFrame(fi);
+
+    // Drag to reorder
+    canvas.addEventListener('dragstart', (e) => {
+      dragSrcIdx = fi;
+      e.dataTransfer.effectAllowed = 'move';
+      canvas.style.opacity = '0.4';
+    });
+    canvas.addEventListener('dragend', () => {
+      canvas.style.opacity = '1';
+      dragSrcIdx = null;
+    });
+    canvas.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      canvas.style.outline = '2px solid #5a5aff';
+    });
+    canvas.addEventListener('dragleave', () => {
+      canvas.style.outline = '';
+    });
+    canvas.addEventListener('drop', (e) => {
+      e.preventDefault();
+      canvas.style.outline = '';
+      if (dragSrcIdx === null || dragSrcIdx === fi) return;
+      saveUndo();
+      const moved = frames.splice(dragSrcIdx, 1)[0];
+      const targetIdx = dragSrcIdx < fi ? fi - 1 : fi;
+      frames.splice(targetIdx, 0, moved);
+      curFrame = targetIdx;
+      dragSrcIdx = null;
+      renderGrid();
+    });
+
+    const ctx = canvas.getContext('2d');
+    frame.forEach((c, i) => {
+      ctx.fillStyle = c;
+      ctx.fillRect(i % W, Math.floor(i / W), 1, 1);
+    });
+    list.appendChild(canvas);
+  });
+}
+
+// --- Preview ---
+function renderPreview() {
+  const canvas = document.getElementById('previewCanvas');
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const frame = frames[curFrame];
+  const pw = canvas.width / W, ph = canvas.height / H;
+  const glowEnabled = document.getElementById('glowEffect').checked;
+
+  // If glow is enabled, first render glow halo
+  if (glowEnabled) {
+    frame.forEach((c, i) => {
+      if (c !== '#000000') {
+        // Get 50% brightness version of the color
+        const r = Math.floor(parseInt(c.slice(1, 3), 16) * 0.5);
+        const g = Math.floor(parseInt(c.slice(3, 5), 16) * 0.5);
+        const b = Math.floor(parseInt(c.slice(5, 7), 16) * 0.5);
+        const glowColor = `rgb(${r},${g},${b})`;
+        
+        const x = i % W;
+        const y = Math.floor(i / W);
+        
+        // Apply glow to surrounding 8 neighbors
+        const neighbors = [
+          x - 1, y - 1,  // top-left
+          x, y - 1,      // top
+          x + 1, y - 1,  // top-right
+          x - 1, y,      // left
+          x + 1, y,      // right
+          x - 1, y + 1,  // bottom-left
+          x, y + 1,      // bottom
+          x + 1, y + 1   // bottom-right
+        ];
+        
+        for (let k = 0; k < neighbors.length; k += 2) {
+          const nx = neighbors[k];
+          const ny = neighbors[k + 1];
+          if (nx >= 0 && nx < W && ny >= 0 && ny < H) {
+            const nidx = ny * W + nx;
+            // Only apply glow if neighbor is not a bright pixel
+            if (frame[nidx] === '#000000') {
+              ctx.fillStyle = glowColor;
+              ctx.fillRect(nx * pw, ny * ph, pw, ph);
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // Then render the bright pixels on top
+  frame.forEach((c, i) => {
+    if (c !== '#000000') {
+      ctx.fillStyle = c;
+      ctx.fillRect((i % W) * pw, Math.floor(i / W) * ph, pw, ph);
+    }
+  });
+}
+
+function togglePlay() {
+  playing = !playing;
+  document.getElementById('btnPlay').textContent = playing ? 'Stop' : 'Play';
+  document.getElementById('btnPlay').classList.toggle('active', playing);
+  if (playing) {
+    playTick();
+  } else {
+    clearTimeout(playTimer);
+  }
+}
+
+function playTick() {
+  if (!playing) return;
+  curFrame = (curFrame + 1) % frames.length;
+  renderGrid();
+  const ms = parseInt(document.getElementById('frameMs').value) || 200;
+  playTimer = setTimeout(playTick, ms);
+}
+
+// --- Export ---
+function frameToHex(frame) {
+  return frame.map(c => {
+    const r = c.slice(1, 3).toUpperCase();
+    const g = c.slice(3, 5).toUpperCase();
+    const b = c.slice(5, 7).toUpperCase();
+    return r + g + b;
+  }).join('');
+}
+
+function copyServiceCall() {
+  const allHex = frames.map(f => frameToHex(f)).join(';');
+  const ms = parseInt(document.getElementById('frameMs').value) || 200;
+  const fade = document.getElementById('fadeFrames').checked;
+  const yaml = `service: esphome.home_assistant_voice_0900f7_display_sprite
+data:
+  frames: "${allHex}"
+  frame_count: ${frames.length}
+  frame_ms: ${ms}
+  fade: ${fade}`;
+  document.getElementById('exportOutput').value = yaml;
+  copyToClipboard(yaml);
+}
+
+function copyFaceCode() {
+  const rawName = document.getElementById('spriteName').value || 'My Sprite';
+  const slug = rawName.toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_|_$/g, '');
+  const exportedFrames = getExportFrames();
+  const nf = exportedFrames.length;
+
+  // Build sparse uint8_t arrays — one per frame
+  let arrays = '';
+  exportedFrames.forEach((hexStr, fi) => {
+    const entries = [];
+    for (let i = 0; i < 128; i++) {
+      const chunk = hexStr.slice(i * 6, i * 6 + 6);
+      if (chunk.length < 6) continue;
+      const r = parseInt(chunk.slice(0, 2), 16);
+      const g = parseInt(chunk.slice(2, 4), 16);
+      const b = parseInt(chunk.slice(4, 6), 16);
+      if (r || g || b) {
+        const x = i % 16, y = Math.floor(i / 16);
+        entries.push(`${x},${y},${r},${g},${b}`);
+      }
+    }
+    arrays += `static const uint8_t F_${slug}_${fi}[] = {${entries.join(', ')}, 255};\n`;
+  });
+
+  // Build frame ref list (no padding needed — struct f[12] handles it)
+  const frameRefs = Array.from({length: nf}, (_, i) => `F_${slug}_${i}`).join(', ');
+
+  const faceName = rawName.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+
+  const output =
+`// ── ${rawName} ──────────────────────────────────────────────────────────────
+// Paste these lines into led_faces.h, above the LED_FACES[] array:
+${arrays}
+// Then add this line inside LED_FACES[]:
+  {"${faceName}", ${nf}, {${frameRefs}}},
+// And change: static const int LED_FACES_COUNT = X;
+// To:         static const int LED_FACES_COUNT = X+1;`;
+
+  document.getElementById('exportOutput').value = output;
+  copyToClipboard(output);
+}
+
+function copyAutomation() {
+  const name = document.getElementById('spriteName').value || 'My Sprite';
+  const allHex = frames.map(f => frameToHex(f)).join(';');
+  const ms = parseInt(document.getElementById('frameMs').value) || 200;
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+
+  const fade = document.getElementById('fadeFrames').checked;
+  const yaml = `# HA Automation action to display "${name}"
+# Paste this under "action:" in an automation
+- service: esphome.home_assistant_voice_0900f7_display_sprite
+  data:
+    frames: "${allHex}"
+    frame_count: ${frames.length}
+    frame_ms: ${ms}
+    fade: ${fade}
+
+# To switch back to text:
+# - service: esphome.home_assistant_voice_0900f7_display_text
+#   data:
+#     message: "Hello!"`;
+
+  document.getElementById('exportOutput').value = yaml;
+  copyToClipboard(yaml);
+}
+
+function copyToClipboard(text) {
+  // Try modern clipboard API first
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => {
+      showToast('Copied to clipboard!');
+    }).catch(() => fallbackCopy(text));
+  } else {
+    fallbackCopy(text);
+  }
+}
+
+function fallbackCopy(text) {
+  // Fallback for file:// and older browsers — select the textarea
+  const ta = document.getElementById('exportOutput');
+  ta.select();
+  ta.setSelectionRange(0, 99999);
+  try {
+    document.execCommand('copy');
+    showToast('Copied to clipboard!');
+  } catch {
+    showToast('Press Ctrl+C / Cmd+C to copy');
+  }
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// --- Keyboard shortcuts ---
+document.addEventListener('keydown', (e) => {
+  // Undo/Redo work everywhere (including inputs)
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
+  if ((e.ctrlKey || e.metaKey) && ((e.key === 'z' && e.shiftKey) || e.key === 'y')) { e.preventDefault(); redo(); return; }
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.key === 'p') setTool('paint');
+  if (e.key === 'e') setTool('eraser');
+  if (e.key === 'i') setTool('eyedrop');
+  if (e.key === 'f') setTool('fill');
+  if (e.shiftKey && e.key === 'ArrowLeft') { e.preventDefault(); shiftFrame(-1, 0); return; }
+  if (e.shiftKey && e.key === 'ArrowRight') { e.preventDefault(); shiftFrame(1, 0); return; }
+  if (e.shiftKey && e.key === 'ArrowUp') { e.preventDefault(); shiftFrame(0, -1); return; }
+  if (e.shiftKey && e.key === 'ArrowDown') { e.preventDefault(); shiftFrame(0, 1); return; }
+  if (e.key === 'ArrowLeft') prevFrame();
+  if (e.key === 'ArrowRight') nextFrame();
+  if (e.key === ' ') { e.preventDefault(); togglePlay(); }
+  if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); clearFrame(); }
+});
+
+// --- Onion skin toggle ---
+document.getElementById('onionSkin').addEventListener('change', renderGrid);
+
+// --- Glow effect toggle ---
+document.getElementById('glowEffect').addEventListener('change', renderPreview);
+
+// --- Saved Sprites Library (localStorage) ---
+const STORAGE_KEY = 'ledMatrixSprites';
+
+function getLibrary() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+  catch { return []; }
+}
+
+function setLibrary(lib) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(lib));
+  renderLibrary();
+}
+
+function newSprite() {
+  if (!confirm('Start a new sprite? Unsaved changes will be lost.')) return;
+  frames = [makeBlankFrame()];
+  curFrame = 0;
+  document.getElementById('spriteName').value = 'New Sprite';
+  document.getElementById('frameMs').value = 200;
+  document.getElementById('fadeFrames').checked = false;
+  document.getElementById('glowEffect').checked = false;
+  document.getElementById('exportOutput').value = '';
+  renderGrid();
+  showToast('New sprite started');
+}
+
+function saveSprite() {
+  const name = document.getElementById('spriteName').value || 'Untitled';
+  const ms = parseInt(document.getElementById('frameMs').value) || 200;
+  const fade = document.getElementById('fadeFrames').checked;
+  const lib = getLibrary();
+  // Check if name already exists — offer to overwrite
+  const existing = lib.findIndex(s => s.name === name);
+  if (existing >= 0) {
+    if (!confirm(`"${name}" already exists. Overwrite?`)) return;
+    lib[existing] = { name, frameMs: ms, fade, frames: frames.map(f => [...f]) };
+  } else {
+    lib.push({ name, frameMs: ms, fade, frames: frames.map(f => [...f]) });
+  }
+  setLibrary(lib);
+  showToast(`Saved "${name}"`);
+}
+
+function loadSprite(idx) {
+  const lib = getLibrary();
+  const sprite = lib[idx];
+  if (!sprite) return;
+  frames = sprite.frames.map(f => [...f]);
+  curFrame = 0;
+  document.getElementById('spriteName').value = sprite.name;
+  document.getElementById('frameMs').value = sprite.frameMs || 200;
+  document.getElementById('fadeFrames').checked = !!sprite.fade;
+  renderGrid();
+  showToast(`Loaded "${sprite.name}"`);
+}
+
+function deleteSprite(idx) {
+  const lib = getLibrary();
+  if (!confirm(`Delete "${lib[idx].name}"?`)) return;
+  lib.splice(idx, 1);
+  setLibrary(lib);
+}
+
+function renameSprite(idx) {
+  const lib = getLibrary();
+  const newName = prompt('New name:', lib[idx].name);
+  if (!newName || newName === lib[idx].name) return;
+  lib[idx].name = newName;
+  setLibrary(lib);
+}
+
+function renderLibrary() {
+  const list = document.getElementById('libraryList');
+  const lib = getLibrary();
+  if (lib.length === 0) {
+    list.innerHTML = '<div style="font-size:0.8em; color:#666; padding:8px;">No saved sprites yet. Draw something and click Save.</div>';
+    return;
+  }
+  list.innerHTML = '';
+  lib.forEach((sprite, idx) => {
+    const item = document.createElement('div');
+    item.className = 'library-item';
+
+    // Thumbnail of first frame
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    canvas.style.width = '48px'; canvas.style.height = '24px';
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+    if (sprite.frames && sprite.frames[0]) {
+      sprite.frames[0].forEach((c, i) => {
+        ctx.fillStyle = c;
+        ctx.fillRect(i % W, Math.floor(i / W), 1, 1);
+      });
+    }
+
+    const nameEl = document.createElement('span');
+    nameEl.className = 'lib-name';
+    nameEl.textContent = sprite.name;
+
+    const info = document.createElement('span');
+    info.className = 'lib-info';
+    const fc = sprite.frames ? sprite.frames.length : 0;
+    info.textContent = `${fc} frame${fc !== 1 ? 's' : ''}`;
+
+    const actions = document.createElement('span');
+    actions.className = 'lib-actions';
+    actions.innerHTML = `<button class="btn" onclick="event.stopPropagation(); loadSprite(${idx})">Load</button><button class="btn" onclick="event.stopPropagation(); renameSprite(${idx})">Rename</button><button class="btn danger" onclick="event.stopPropagation(); deleteSprite(${idx})">Del</button>`;
+
+    item.appendChild(canvas);
+    item.appendChild(nameEl);
+    item.appendChild(info);
+    item.appendChild(actions);
+    item.onclick = () => loadSprite(idx);
+    list.appendChild(item);
+  });
+}
+
+function exportLibrary() {
+  const lib = getLibrary();
+  if (lib.length === 0) { showToast('No sprites to export'); return; }
+  const json = JSON.stringify(lib, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'led-sprites.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast('Exported library');
+}
+
+function importLibrary(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const imported = JSON.parse(e.target.result);
+      if (!Array.isArray(imported)) throw new Error('Invalid format');
+      const lib = getLibrary();
+      let added = 0;
+      imported.forEach(sprite => {
+        if (sprite.name && sprite.frames) {
+          // Avoid duplicates by name
+          const existing = lib.findIndex(s => s.name === sprite.name);
+          if (existing >= 0) {
+            lib[existing] = sprite;
+          } else {
+            lib.push(sprite);
+          }
+          added++;
+        }
+      });
+      setLibrary(lib);
+      showToast(`Imported ${added} sprite(s)`);
+    } catch {
+      showToast('Invalid JSON file');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+// --- Import from led_faces.h ---
+function importFromHeader(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const src = e.target.result;
+    // Parse all: static const uint8_t F_NAME_N[] = {x,y,r,g,b, ..., 255};
+    const arrayRe = /static\s+const\s+uint8_t\s+F_([A-Z0-9_]+?)_(\d+)\s*\[\s*\]\s*=\s*\{([^}]+)\}/g;
+    // Collect frame data grouped by face name
+    const faceMap = {};
+    let m;
+    while ((m = arrayRe.exec(src)) !== null) {
+      const baseName = m[1].toLowerCase();   // e.g. "happy"
+      const frameIdx = parseInt(m[2]);
+      const nums = m[3].split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+      // Decode sparse {x,y,r,g,b} tuples until sentinel 255
+      const frame = Array(W * H).fill('#000000');
+      for (let i = 0; i + 4 < nums.length; i += 5) {
+        if (nums[i] === 255) break;
+        const x = nums[i], y = nums[i+1], r = nums[i+2], g = nums[i+3], b = nums[i+4];
+        if (x < W && y < H) {
+          frame[y * W + x] = '#' + r.toString(16).padStart(2,'0') + g.toString(16).padStart(2,'0') + b.toString(16).padStart(2,'0');
+        }
+      }
+      if (!faceMap[baseName]) faceMap[baseName] = [];
+      faceMap[baseName][frameIdx] = frame;
+    }
+
+    if (Object.keys(faceMap).length === 0) {
+      showToast('No faces found in file');
+      return;
+    }
+
+    // Import each face into the library
+    const lib = getLibrary();
+    let added = 0;
+    for (const [name, frameArr] of Object.entries(faceMap)) {
+      // Fill any gaps in frame array
+      const cleanFrames = [];
+      for (let i = 0; i < frameArr.length; i++) {
+        cleanFrames.push(frameArr[i] || Array(W * H).fill('#000000'));
+      }
+      if (cleanFrames.length === 0) continue;
+      const existing = lib.findIndex(s => s.name === name);
+      const entry = { name, frameMs: 300, fade: false, frames: cleanFrames };
+      if (existing >= 0) lib[existing] = entry;
+      else lib.push(entry);
+      added++;
+    }
+    setLibrary(lib);
+    showToast(`Imported ${added} face(s) from led_faces.h`);
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+// --- Init ---
+init();
+renderLibrary();
+</script>
+</body>
+</html>

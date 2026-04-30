@@ -1,0 +1,601 @@
+substitutions:
+  name: home-assistant-voice
+  friendly_name: Home Assistant Voice
+
+packages:
+  Nabu Casa.Home Assistant Voice PE: github://esphome/home-assistant-voice-pe/home-assistant-voice.yaml
+
+esphome:
+  name: ${name}
+  name_add_mac_suffix: false
+  friendly_name: ${friendly_name}
+  includes:
+    - led_faces.h
+  platformio_options:
+    build_unflags: "-O2 -Os"
+    build_flags: "-O1"
+  on_boot:
+    priority: -100
+    then:
+      - lambda: |-
+          id(display_mode) = 0;
+          id(brightness_actual) = 0.0f;
+          id(brightness_target) = 0.0f;
+          auto* strip = static_cast<esphome::light::AddressableLight*>(id(leds_internal).get_output());
+          if (strip) {
+            for (int i = 12; i < 140; i++) {
+              (*strip)[i] = esphome::Color::BLACK;
+            }
+            strip->schedule_show();
+          }
+      - delay: 2s
+      - lambda: |-
+          id(display_mode) = 6;
+          id(face_name) = "default";
+          id(brightness_actual) = 0.0f;
+          id(brightness_target) = 0.0f;
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+  services:
+    - service: display_text
+      variables:
+        message: string
+      then:
+        - globals.set:
+            id: display_mode
+            value: '0'
+        - globals.set:
+            id: scroll_text
+            value: !lambda 'return message;'
+        - globals.set:
+            id: scroll_pos
+            value: '16'
+        - lambda: id(matrix_brightness).make_call().set_value(50).perform();
+    - service: display_sprite
+      variables:
+        frames: string
+        frame_count: int
+        frame_ms: int
+        fade: bool
+      then:
+        - globals.set:
+            id: display_mode
+            value: '1'
+        - globals.set:
+            id: sprite_data
+            value: !lambda 'return frames;'
+        - globals.set:
+            id: sprite_frame_count
+            value: !lambda 'return frame_count;'
+        - globals.set:
+            id: sprite_frame_ms
+            value: !lambda 'return frame_ms;'
+        - globals.set:
+            id: sprite_fade
+            value: !lambda 'return fade;'
+    - service: display_off
+      then:
+        - globals.set:
+            id: display_mode
+            value: '2'
+    - service: display_volume
+      variables:
+        volume: float
+      then:
+        - lambda: |-
+            if (!id(boot_complete)) return;
+            if (millis() - id(boot_complete_ms) < 10000) return;
+            id(volume_level) = volume;
+            id(display_mode) = 9;
+            id(matrix_brightness).make_call().set_value(50).perform();
+        - script.execute: volume_return
+    - service: display_face_briefly
+      variables:
+        name: string
+        duration: int
+      then:
+        - lambda: |-
+            if (!id(boot_complete)) return;
+            id(is_sleeping) = false;
+            id(idle_since_ms) = 0;
+            id(display_mode) = 5;
+            id(face_name) = name;
+            id(matrix_brightness).make_call().set_value(50).perform();
+        - script.execute:
+            id: face_briefly_return
+            duration: !lambda 'return duration;'
+    - service: display_wake
+      then:
+        - globals.set:
+            id: display_mode
+            value: '5'
+        - globals.set:
+            id: face_name
+            value: '"default"'
+        - lambda: |-
+            id(is_sleeping) = false;
+            id(idle_since_ms) = 0;
+            id(matrix_brightness).make_call().set_value(50).perform();
+    - service: display_equalizer
+      then:
+        - globals.set:
+            id: display_mode
+            value: '7'
+        - lambda: id(matrix_brightness).make_call().set_value(50).perform();
+    - service: display_face
+      variables:
+        name: string
+      then:
+        - globals.set:
+            id: display_mode
+            value: '5'
+        - globals.set:
+            id: face_name
+            value: !lambda 'return name;'
+        - lambda: |-
+            id(is_sleeping) = false;
+            id(idle_since_ms) = 0;
+            id(matrix_brightness).make_call().set_value(50).perform();
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+globals:
+  - id: display_mode
+    type: int
+    restore_value: false
+    initial_value: '6'
+  - id: scroll_text
+    type: std::string
+    restore_value: false
+    initial_value: '"Hello!"'
+  - id: scroll_pos
+    type: int
+    restore_value: false
+    initial_value: '16'
+  - id: sprite_data
+    type: std::string
+    restore_value: false
+    initial_value: '""'
+  - id: sprite_frame_count
+    type: int
+    restore_value: false
+    initial_value: '1'
+  - id: sprite_frame_ms
+    type: int
+    restore_value: false
+    initial_value: '200'
+  - id: sprite_fade
+    type: bool
+    restore_value: false
+    initial_value: 'false'
+  - id: face_name
+    type: std::string
+    restore_value: false
+    initial_value: '"default"'
+  - id: is_sleeping
+    type: bool
+    restore_value: false
+    initial_value: 'false'
+  - id: idle_since_ms
+    type: uint32_t
+    restore_value: false
+    initial_value: '0'
+  - id: brightness_actual
+    type: float
+    restore_value: false
+    initial_value: '0.0'
+  - id: brightness_target
+    type: float
+    restore_value: false
+    initial_value: '0.5'
+  - id: boot_complete
+    type: bool
+    restore_value: false
+    initial_value: 'false'
+  - id: boot_complete_ms
+    type: uint32_t
+    restore_value: false
+    initial_value: '0'
+  - id: volume_level
+    type: float
+    restore_value: false
+    initial_value: '0.5'
+
+script:
+  - id: face_briefly_return
+    mode: restart
+    parameters:
+      duration: int
+    then:
+      - delay: !lambda 'return duration * 1000;'
+      - lambda: |-
+          if (id(voice_assistant_phase) == 1) {
+            id(display_mode) = 5;
+            id(face_name) = "default";
+          }
+  - id: volume_return
+    mode: restart
+    then:
+      - delay: 2s
+      - lambda: |-
+          if (id(voice_assistant_phase) == 1) {
+            id(display_mode) = 5;
+          }
+
+text_sensor:
+  - platform: template
+    id: display_status
+    name: "Matrix Display Status"
+    icon: "mdi:led-strip"
+
+font:
+  - file: "gfonts://Pixelify Sans"
+    id: matrix_font
+    size: 8
+    glyphs: '!"%()+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz'
+
+number:
+  - platform: template
+    name: "Scroll Speed"
+    id: scroll_speed_ms
+    icon: "mdi:speedometer"
+    min_value: 30
+    max_value: 300
+    step: 10
+    optimistic: true
+    restore_value: true
+    initial_value: 80
+    unit_of_measurement: "ms"
+    mode: slider
+  - platform: template
+    name: "Matrix Brightness"
+    id: matrix_brightness
+    icon: "mdi:brightness-6"
+    min_value: 5
+    max_value: 100
+    step: 5
+    optimistic: true
+    restore_value: true
+    initial_value: 50
+    unit_of_measurement: "%"
+    mode: slider
+
+display:
+  - platform: addressable_light
+    id: led_matrix_display
+    addressable_light_id: led_matrix
+    width: 16
+    height: 8
+    pixel_mapper: |-
+      int panel = x / 8;
+      int col = x % 8;
+      int base = panel * 64;
+      return base + y * 8 + col;
+    update_interval: 16ms
+    lambda: |-
+      static std::string last_published_status = "";
+      {
+        std::string status;
+        int m = id(display_mode);
+        if      (m == 0) status = "text:" + id(scroll_text);
+        else if (m == 1) status = "sprite";
+        else if (m == 2) status = "off";
+        else if (m == 3) status = "rainbow";
+        else if (m == 4) status = "pulse";
+        else if (m == 5) {
+          int ph = id(voice_assistant_phase);
+          std::string displayed;
+          if      (ph == 2)  displayed = "surprised";
+          else if (ph == 3)  displayed = "listening";
+          else if (ph == 4)  displayed = "thinking";
+          else if (ph == 5)  displayed = "talking";
+          else if (ph == 10) displayed = "neutral";
+          else if (ph == 11) displayed = "sad";
+          else if (id(is_sleeping)) displayed = "sleeping";
+          else               displayed = id(face_name);
+          status = "face:" + displayed;
+        }
+        else if (m == 6) status = "boot";
+        else if (m == 7) status = "equalizer";
+        else if (m == 8) status = "boot:fade";
+        else if (m == 9) status = "volume";
+        else             status = "unknown";
+        if (status != last_published_status) {
+          last_published_status = status;
+          id(display_status).publish_state(status);
+        }
+      }
+      auto hexval = [](char c) -> uint8_t {
+        if (c >= '0' && c <= '9') return c - '0';
+        if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+        if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+        return 0;
+      };
+      float target = id(brightness_target);
+      float actual = id(brightness_actual);
+      if (actual < target) actual = min(actual + 0.02f, target);
+      else if (actual > target) actual = max(actual - 0.02f, target);
+      id(brightness_actual) = actual;
+      if (!id(is_sleeping)) {
+        float slider = id(matrix_brightness).state / 100.0f;
+        if (fabsf(slider - target) > 0.01f) {
+          id(brightness_target) = slider;
+        }
+      }
+      bool sleeping_now = id(is_sleeping);
+      auto dim = [actual, sleeping_now](uint8_t v) -> uint8_t {
+        if (v == 0) return 0;
+        uint8_t d = (uint8_t)(v * actual);
+        if (sleeping_now && d < 8) d = 8;
+        return d;
+      };
+      int mode = id(display_mode);
+      if (mode == 2) {
+        int ph = id(voice_assistant_phase);
+        if (ph != 1 && ph != 10) {
+          id(is_sleeping) = false;
+          id(idle_since_ms) = 0;
+          id(display_mode) = 5;
+          id(matrix_brightness).make_call().set_value(50).perform();
+          mode = 5;
+        } else {
+          return;
+        }
+      }
+      it.fill(Color::BLACK);
+      if (mode == 0) {
+        static uint32_t last_scroll = 0;
+        uint32_t now = millis();
+        int speed = (int)id(scroll_speed_ms).state;
+        if (speed < 30) speed = 80;
+        if (now - last_scroll >= (uint32_t)speed) {
+          last_scroll = now;
+          id(scroll_pos) -= 1;
+        }
+        std::string text = id(scroll_text);
+        int text_width, x_start, y_start, text_height;
+        id(matrix_font).measure(text.c_str(), &text_width, &x_start, &y_start, &text_height);
+        if (id(scroll_pos) < -text_width) {
+          id(scroll_pos) = 16;
+        }
+        it.print(id(scroll_pos), 0, id(matrix_font), Color(dim(255), dim(255), dim(255)), TextAlign::TOP_LEFT, text.c_str());
+      } else if (mode == 1) {
+        static int cur_frame = 0;
+        static uint32_t last_frame = 0;
+        uint32_t now = millis();
+        int num_frames = id(sprite_frame_count);
+        int frame_ms = id(sprite_frame_ms);
+        bool do_fade = id(sprite_fade);
+        uint32_t elapsed = now - last_frame;
+        uint8_t blend = 255;
+        if (do_fade && num_frames > 1 && frame_ms > 0) {
+          if (elapsed >= (uint32_t)frame_ms) {
+            last_frame = now;
+            cur_frame = (cur_frame + 1) % num_frames;
+            blend = 0;
+          } else {
+            blend = (elapsed * 255) / frame_ms;
+          }
+        } else if (num_frames > 1 && elapsed >= (uint32_t)frame_ms) {
+          last_frame = now;
+          cur_frame = (cur_frame + 1) % num_frames;
+        }
+        if (num_frames <= 1) cur_frame = 0;
+        std::string &data = id(sprite_data);
+        int frame_len = 768;
+        int off_cur = cur_frame * (frame_len + 1);
+        if (off_cur + frame_len > (int)data.length()) return;
+        const char* fc = data.c_str() + off_cur;
+        int prev_frame = (cur_frame - 1 + num_frames) % num_frames;
+        int off_prev = prev_frame * (frame_len + 1);
+        const char* fp = (do_fade && num_frames > 1 && off_prev + frame_len <= (int)data.length())
+                         ? data.c_str() + off_prev : nullptr;
+        for (int y = 0; y < 8; y++) {
+          for (int x = 0; x < 16; x++) {
+            int i = (y * 16 + x) * 6;
+            uint8_t r = (hexval(fc[i]) << 4) | hexval(fc[i+1]);
+            uint8_t g = (hexval(fc[i+2]) << 4) | hexval(fc[i+3]);
+            uint8_t b = (hexval(fc[i+4]) << 4) | hexval(fc[i+5]);
+            if (fp && blend < 255) {
+              uint8_t pr = (hexval(fp[i]) << 4) | hexval(fp[i+1]);
+              uint8_t pg = (hexval(fp[i+2]) << 4) | hexval(fp[i+3]);
+              uint8_t pb = (hexval(fp[i+4]) << 4) | hexval(fp[i+5]);
+              r = (pr * (255 - blend) + r * blend) / 255;
+              g = (pg * (255 - blend) + g * blend) / 255;
+              b = (pb * (255 - blend) + b * blend) / 255;
+            }
+            if (r || g || b) {
+              it.draw_pixel_at(x, y, Color(dim(r), dim(g), dim(b)));
+            }
+          }
+        }
+      } else if (mode == 3) {
+        static uint16_t hue_offset = 0;
+        hue_offset += 2;
+        for (int y = 0; y < 8; y++) {
+          for (int x = 0; x < 16; x++) {
+            uint8_t hue = (uint8_t)((x + y * 2) * 16 + hue_offset);
+            auto rgb = Color(0, 0, 0);
+            uint8_t region = hue / 43;
+            uint8_t remainder = (hue - region * 43) * 6;
+            uint8_t p = 0, q = (128 * (255 - remainder)) / 255, t = (128 * remainder) / 255;
+            switch (region) {
+              case 0: rgb = Color(128, t, p); break;
+              case 1: rgb = Color(q, 128, p); break;
+              case 2: rgb = Color(p, 128, t); break;
+              case 3: rgb = Color(p, q, 128); break;
+              case 4: rgb = Color(t, p, 128); break;
+              default: rgb = Color(128, p, q); break;
+            }
+            it.draw_pixel_at(x, y, Color(dim(rgb.r), dim(rgb.g), dim(rgb.b)));
+          }
+        }
+      } else if (mode == 5) {
+        static int face_cur_frame = 0;
+        static uint32_t face_last_switch = 0;
+        static std::string last_auto_face = "";
+        uint32_t now = millis();
+        int phase = id(voice_assistant_phase);
+        const char* auto_face = nullptr;
+        if      (phase == 2)  auto_face = "surprised";
+        else if (phase == 3)  auto_face = "listening";
+        else if (phase == 4)  auto_face = "thinking";
+        else if (phase == 5)  auto_face = "talking";
+        else if (phase == 10) auto_face = "neutral";
+        else if (phase == 11) auto_face = "sad";
+        else if (phase == 1 && last_auto_face != "" && last_auto_face != "default") {
+          auto_face = "default";
+        }
+        if (phase == 1 && id(boot_complete)) {
+          if (id(idle_since_ms) == 0) id(idle_since_ms) = now;
+          if (!id(is_sleeping) && now - id(idle_since_ms) >= 30000) {
+            id(is_sleeping) = true;
+            auto_face = "sleeping";
+            id(brightness_target) = 0.05f;
+          }
+        } else {
+          if (id(is_sleeping)) {
+            id(is_sleeping) = false;
+            id(idle_since_ms) = 0;
+            id(brightness_target) = id(matrix_brightness).state / 100.0f;
+          }
+          id(idle_since_ms) = 0;
+        }
+        if (auto_face && last_auto_face != auto_face) {
+          last_auto_face = auto_face;
+          id(face_name) = auto_face;
+          face_cur_frame = 0;
+          face_last_switch = now;
+        }
+        const std::string& render_face = (phase != 1)       ? last_auto_face
+                                       : id(is_sleeping)     ? std::string("sleeping")
+                                                             : id(face_name);
+        const Face* face = find_face(render_face);
+        if (face->nf > 1 && now - face_last_switch >= 300) {
+          face_last_switch = now;
+          face_cur_frame = (face_cur_frame + 1) % face->nf;
+        }
+        if (face->nf <= 1) face_cur_frame = 0;
+        const uint8_t* f = face->f[face_cur_frame];
+        if (!f) { face_cur_frame = 0; f = face->f[0]; }
+        for (int i = 0; f[i] != 255; i += 5) {
+          it.draw_pixel_at(f[i], f[i+1], Color(dim(f[i+2]), dim(f[i+3]), dim(f[i+4])));
+        }
+      } else if (mode == 4) {
+        static uint32_t pulse_start = 0;
+        if (pulse_start == 0) pulse_start = millis();
+        uint32_t elapsed = millis() - pulse_start;
+        int phase = elapsed % 2000;
+        uint8_t bright;
+        if (phase < 1000) {
+          bright = (phase * 128) / 1000;
+        } else {
+          bright = ((2000 - phase) * 128) / 1000;
+        }
+        if (bright < 25) bright = 25;
+        for (int y = 0; y < 8; y++) {
+          for (int x = 0; x < 16; x++) {
+            it.draw_pixel_at(x, y, Color(dim(bright), dim(bright), dim(bright)));
+          }
+        }
+      } else if (mode == 6) {
+        static int boot_frame = 0;
+        static uint32_t boot_last = 0;
+        uint32_t now_b = millis();
+        const Face* logo = find_face("logo");
+        if (boot_last == 0) boot_last = now_b;
+        float boot_progress = (float)boot_frame / (float)(logo->nf - 1);
+        id(brightness_actual) = boot_progress * 0.5f;
+        id(brightness_target) = id(brightness_actual);
+        if (now_b - boot_last >= 150) {
+          boot_last = now_b;
+          boot_frame++;
+        }
+        if (boot_frame >= logo->nf) {
+          id(brightness_actual) = 0.5f;
+          id(brightness_target) = 0.0f;
+          id(display_mode) = 8;
+          boot_frame = 0;
+          boot_last = 0;
+        } else {
+          const uint8_t* f = logo->f[boot_frame];
+          if (f) {
+            for (int i = 0; f[i] != 255; i += 5) {
+              it.draw_pixel_at(f[i], f[i+1], Color(dim(f[i+2]), dim(f[i+3]), dim(f[i+4])));
+            }
+          }
+        }
+      } else if (mode == 7) {
+        uint32_t t = millis();
+        static const float freqs[16] = {
+          1.3f, 1.7f, 2.1f, 1.5f, 2.5f, 1.9f, 2.9f, 1.1f,
+          2.3f, 1.6f, 3.1f, 2.0f, 1.4f, 2.7f, 1.8f, 2.4f
+        };
+        static const float phases[16] = {
+          0.0f, 0.8f, 1.6f, 2.4f, 3.2f, 0.4f, 1.2f, 2.0f,
+          2.8f, 0.6f, 1.4f, 2.2f, 3.0f, 0.2f, 1.0f, 1.8f
+        };
+        for (int x = 0; x < 16; x++) {
+          float ft = t / 1000.0f;
+          float s1 = sinf(ft * freqs[x] + phases[x]);
+          float s2 = sinf(ft * freqs[x] * 0.7f + phases[x] + 1.0f);
+          float combined = (s1 * 0.65f + s2 * 0.35f + 1.0f) / 2.0f;
+          int bar_h = 1 + (int)(combined * 7.0f);
+          for (int y = 0; y < 8; y++) {
+            int bar_y = 7 - y;
+            if (bar_y >= (8 - bar_h)) {
+              uint8_t r = 0, g = 0, b = 0;
+              if (y < 3)       { r = 0;   g = 200; }
+              else if (y < 6)  { r = 200; g = 200; }
+              else             { r = 200; g = 0;   }
+              if (bar_y == (8 - bar_h)) { r = r ? 255 : 0; g = g ? 255 : 0; }
+              it.draw_pixel_at(x, bar_y, Color(dim(r), dim(g), dim(b)));
+            }
+          }
+        }
+      } else if (mode == 8) {
+        if (id(brightness_actual) <= 0.01f) {
+          id(display_mode) = 5;
+          id(face_name) = "default";
+          id(matrix_brightness).make_call().set_value(50).perform();
+          id(boot_complete) = true;
+          id(boot_complete_ms) = millis();
+        }
+      } else if (mode == 9) {
+        float vol = id(volume_level);
+        int filled = (int)(vol * 16.0f);
+        if (filled > 16) filled = 16;
+        for (int x = 0; x < 16; x++) {
+          for (int y = 1; y < 7; y++) {
+            if (x < filled) {
+              uint8_t r = (uint8_t)(x * 10);
+              uint8_t g = (uint8_t)(128 + x * 5);
+              uint8_t b = 255;
+              if (x == filled - 1) { r = 255; g = 255; b = 255; }
+              it.draw_pixel_at(x, y, Color(dim(r), dim(g), dim(b)));
+            }
+          }
+        }
+        for (int x = 0; x < 16; x += 4) {
+          it.draw_pixel_at(x, 0, Color(dim(40), dim(40), dim(40)));
+          it.draw_pixel_at(x, 7, Color(dim(40), dim(40), dim(40)));
+        }
+      }
+
+light:
+  - id: !extend leds_internal
+    num_leds: 140
+  - platform: partition
+    id: led_matrix
+    name: "LED Matrix"
+    default_transition_length: 0ms
+    restore_mode: RESTORE_DEFAULT_OFF
+    segments:
+      - id: leds_internal
+        from: 12
+        to: 139
+    effects: []

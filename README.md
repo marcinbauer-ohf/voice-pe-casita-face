@@ -1,0 +1,343 @@
+# Voice PE: Casita LED mod
+
+> *Turning Home Assistant's iconic casita into a face.*
+
+A 3D-printed case shaped like the Home Assistant logo, fitted with a 16×8 LED matrix. Faces react to voice assistant state in real time. Also supports scrolling text, custom sprites, equalizer, and volume display.
+
+![Voice PE LED Matrix Face showing the default blue face](images/final-product.jpg)
+
+---
+
+> [!WARNING]
+> **This mod will void your Voice PE warranty.** Disassembling the device and soldering to its internals can permanently brick it. Proceed at your own risk. Start by making a backup of your current ESPHome configuration.
+
+> [!NOTE]
+> This is **not** an official Open Home Foundation (OHF) or Nabu Casa product. It was made by an OHF employee as a personal project. No support is provided beyond this documentation.
+
+---
+
+## Capabilities
+
+| Display mode | Description |
+|---|---|
+| Faces | Animated: default, happy, grin, sad, angry, surprised, neutral, listening, thinking, talking, sleeping |
+| Scrolling text | Send any message from Home Assistant to scroll across the matrix |
+| Custom sprites | Upload pixel-art animations via the included sprite editor |
+| Equalizer | Animated music visualizer bars |
+| Volume bar | Shows current volume level when adjusted |
+| Boot animation | Logo fade-in on startup |
+
+The display integrates directly with the voice assistant — faces switch automatically when you speak, ask a question, get a response, or the device goes idle.
+
+---
+
+## What you need
+
+### Hardware
+
+| Item | Notes |
+|---|---|
+| Home Assistant Voice PE | The device this mod targets |
+| 2× [8×8 WS2812B LED matrix](https://allegro.pl/oferta/led-rgb-2812-matryca-8x8-64-diody-adresowalne-18292956151) | Chainable; these form the 16×8 display |
+| 330 Ω resistor | On the data line between Voice PE and the matrix |
+| 5 V PSU, min 2 A *(optional)* | The built-in USB-C can power the matrix at normal brightness. A dedicated supply is only needed if you run at full brightness for extended periods. |
+| 2-pin JST or similar connector *(optional)* | Only needed with an external PSU |
+| 20 AWG stranded wire | Power feed to the matrix (VCC + GND) — heavier gauge handles the current |
+| Dupont / Arduino wire connectors | For signal wiring — 24 AWG stranded, silicone-insulated preferred |
+| Heat shrink tubing | To insulate exposed solder joints and wires |
+| Small screwdriver set | To open the Voice PE enclosure |
+| Soldering iron + solder | For making connections to the Voice PE board |
+| 3D printer | To print the modified case that fits the matrix — STL files TBD |
+| 5× M4 30 mm screws *or* super glue | To assemble the printed enclosure |
+| Double-sided sticky tape | To secure the LED matrix panels inside the frame |
+
+### Software
+
+| Item | Notes |
+|---|---|
+| [Home Assistant](https://www.home-assistant.io/) | Required — the device connects to HA via ESPHome API |
+| [ESPHome](https://esphome.io/) | For compiling and flashing the firmware |
+| A modern web browser | To use the included sprite editor (no install needed) |
+| An AI coding assistant *(optional)* | Useful for editing `led_faces.h` to create new faces |
+
+---
+
+## 3D printed parts
+
+All files are in the `3d-parts/` folder. Print all parts from the same version — mixing versions may cause fit issues.
+
+**Material:** Matte white PLA recommended (PETG also works); black for `LED-MASK`  
+**Nozzle:** 0.4 mm (model optimised for this size)  
+**Recommended printer:** Bambu A1
+
+| File | Description | Supports | Notes |
+|---|---|---|---|
+| `CABLE-PLUG.3mf` | Plug for the cable opening | None | |
+| `CASE-BACK.3mf` | Rear enclosure panel | Minimal (flat orientation) | Can also be printed same as CASE-FRONT with full supports |
+| `CASE-FRONT.3mf` | Front enclosure panel | Full model | Needed for clean rounded shape |
+| `CASE-MIDDLE.3mf` | Middle section joining front and back | Outer edge only | |
+| `LED-FRAME.3mf` | Frame that holds the LED matrix panels in place | None | |
+| `LED-MASK.3mf` | Diffuser mask over the matrix | None | **Print in black** |
+| `MUTE-SWITCH.3mf` | Replacement mute button cap | None | |
+
+### Version compatibility
+
+| Part | V1 |
+|---|---|
+| CABLE-PLUG | ✅ |
+| CASE-BACK | ✅ |
+| CASE-FRONT | ✅ |
+| CASE-MIDDLE | ✅ |
+| LED-FRAME | ✅ |
+| LED-MASK | ✅ |
+| MUTE-SWITCH | ✅ |
+
+> All V1 parts are compatible with each other. When future versions are released, this table will show which parts can be mixed.
+
+---
+
+## Build guide
+
+> [!NOTE]
+> Step-by-step photos and detailed wiring instructions are coming. The sections below are placeholders.
+
+### 1. Print the parts
+
+Print all parts listed in the [3D printed parts](#3d-printed-parts) section above. Follow the material, colour, and support guidance in that section. Allow prints to finish before moving on — the case assembly is needed before you can solder in position.
+
+### 2. Solder and assemble the hardware
+
+#### Back up your current Voice PE config
+
+Before opening the device, save your existing ESPHome configuration. If something goes wrong you can restore the original firmware wirelessly.
+
+#### Open and disassemble the Voice PE
+
+Parts needed: main board, speaker, all screws
+
+#### LED face assembly and wiring
+
+![All parts needed for the led-frame assembly](images/IMG_7611.jpeg)
+
+- 2× LED panels
+- 3× black 24 AWG wires (10 cm)
+- 3× red 24 AWG wires (10 cm)
+- 3× white 24 AWG wires (10 cm)
+- 3× Dupont connectors
+- 3× heat shrink tubing
+- 2-pin JST connectors *(optional — only if using external PSU)*
+
+##### 2.1 Stick LED panels to LED-FRAME with double-sided tape
+
+Printed part rotation doesn't matter. Just make sure the LED panel alignment is the same on both. The 3-pin connector is optional and can be used to daisy-chain additional internal LEDs.
+
+![](images/IMG_7613.jpeg)
+
+Front:
+
+![](images/IMG_7613.jpeg)
+
+Backside:
+
+![](images/IMG_7615.jpeg)
+
+##### 2.2 Solder panels data line
+
+![](images/IMG_7616.jpeg)
+
+##### 2.3 Solder and secure GND and VCC cable assembly
+
+The 2-pin JST male connector is optional if you want to power it with just USB.
+
+![](images/IMG_7617.jpeg)
+![](images/IMG_7618.jpeg)
+
+##### 2.4 Solder and secure data cable with 330 Ω resistor
+
+![](images/IMG_7619.jpeg)
+
+##### 2.5 Solder the data cable to the IN of the first LED panel
+
+![](images/IMG_7621.jpeg)
+
+##### 2.6 Solder the power assembly cable to the panels GND and VCC IN pads
+
+![](images/IMG_7622.jpeg)
+
+##### 2.7 Solder 2-pin JST female connector to wire for external PSU *(optional)*
+
+![](images/IMG_7648.jpeg)
+
+##### 2.8 Secure with hot glue
+
+![](images/IMG_7649.jpeg)
+
+#### Case assembly
+
+##### 2.9 Assemble CASE-BACK, MUTE-SWITCH and mainboard
+
+Put the mute switch in the case then align the mainboard's toggle tip through the mute-switch hole. Insert 5× M4 30 mm screws, or super-glue the front, middle and back parts at the end.
+
+![](images/IMG_7653.jpeg)
+
+##### 2.10 Mount the speaker
+
+Align the speaker with the printed holes and secure with the original screws.
+
+![](images/IMG_7651.jpeg)
+
+##### 2.11 Join CASE-BACK and CASE-MIDDLE
+
+Align the middle part with the back and screw in. Make sure the outer edges of the case align.
+
+![](images/IMG_7654.jpeg)
+
+##### 2.12 Join CASE-FRONT, connect cables and close with CABLE-PLUG
+
+When using screws, don't overtighten.
+
+![](images/IMG_7655.jpeg)
+
+##### 2.13 Connect cables to main board and snap in the face assembly
+
+- Connect panel GND (white cable) to main board GND pin
+- Connect panel VCC (red cable) to main board 5 V pin
+- Connect panel DATA (black cable) to main board RGB pin
+
+> The matrix connects as an extension of the internal WS2812B strip at positions 12–139. You tap into the data-out of the last internal LED.
+
+![](images/IMG_7655.jpeg)
+
+### 3. Flash the firmware
+
+#### Clone this repository
+
+```bash
+git clone https://github.com/<your-username>/voice-pe-led-face.git
+cd voice-pe-led-face
+```
+
+#### Copy config files into your ESPHome folder
+
+Copy `home-assistant-voice.yaml` and `led_faces.h` into your ESPHome configuration directory (usually `/config/esphome/` on Home Assistant OS).
+
+#### Set your Wi-Fi credentials
+
+In your ESPHome `secrets.yaml`:
+
+```yaml
+wifi_ssid: "YourNetwork"
+wifi_password: "YourPassword"
+```
+
+#### Update the device name
+
+Open `home-assistant-voice.yaml` and change the `name` and `friendly_name` substitutions to match your device.
+
+#### Flash via ESPHome dashboard
+
+1. Open **Settings → Add-ons → ESPHome** in Home Assistant
+2. Find your device and click **Install**
+3. Choose **Wirelessly** if the device is already online, or **Plug into this computer** for first-time flash
+
+The device will reboot and show the boot animation on the matrix.
+
+---
+
+## Using the sprite editor
+
+The sprite editor is a self-contained HTML file — no server needed.
+
+1. Open `sprite-editor.html` in any modern browser
+2. Draw your sprite on the 16×8 pixel grid
+3. Add multiple frames for animation; set frame delay in milliseconds
+4. Enable **Crossfade** for smooth transitions between frames
+5. Click **Copy to clipboard** (or use the export textarea)
+6. In Home Assistant, call the ESPHome service:
+
+```yaml
+service: esphome.<your_device>_display_sprite
+data:
+  frames: "<paste output here>"
+  frame_count: 3       # number of frames you drew
+  frame_ms: 200        # delay per frame in ms
+  fade: true           # crossfade between frames
+```
+
+### Sprite editor features
+
+| Feature | Description |
+|---|---|
+| Paint / Eraser / Eyedropper / Fill | Drawing tools |
+| Quick palette | Pre-set colors matching the built-in face palette |
+| Onion skin | Shows previous frame ghosted beneath current for animation reference |
+| Glow effect | Adds a 50% brightness halo around lit pixels |
+| Frame management | Add, duplicate, delete, reorder frames |
+| Undo / Redo | Full history |
+| Sprite library | Save and reload named sprites locally in the browser |
+| Preview | Animated real-time preview at matrix scale |
+
+---
+
+## Home Assistant services
+
+Once flashed, the device exposes these services under **Developer Tools → Services**:
+
+| Service | Parameters | Description |
+|---|---|---|
+| `display_face` | `name: string` | Show a named face (see list below) |
+| `display_face_briefly` | `name`, `duration` (seconds) | Show face temporarily, then return |
+| `display_text` | `message: string` | Scroll text across the matrix |
+| `display_sprite` | `frames`, `frame_count`, `frame_ms`, `fade` | Show custom sprite animation |
+| `display_wake` | — | Wake from sleep, show default face |
+| `display_equalizer` | — | Show equalizer animation |
+| `display_volume` | `volume: float` (0.0–1.0) | Show volume bar |
+| `display_off` | — | Turn off the matrix |
+
+### Available faces
+
+`default` · `neutral` · `happy` · `grin` · `sad` · `angry` · `surprised` · `thinking` · `talking` · `listening` · `sleeping`
+
+Face colors follow a consistent scheme:
+- **Blue** — idle / calm
+- **Green** — positive / talking / happy
+- **Orange** — attention / listening / thinking
+- **Red** — error / sad / angry
+
+---
+
+## Adding custom faces
+
+Faces are defined in `led_faces.h` as sparse pixel arrays in `{x, y, R, G, B}` format. Each face can have multiple frames for animation. An AI coding assistant works well for generating face data from a description.
+
+---
+
+## Troubleshooting
+
+| Symptom | Likely cause |
+|---|---|
+| Matrix stays dark | Check data line wiring and the 330 Ω resistor |
+| Garbled / wrong pixels | Panels connected in wrong order or wrong data-out tap |
+| Device offline after flash | Wi-Fi credentials wrong in `secrets.yaml` |
+| Faces show but dim | Check `Matrix Brightness` slider in HA entity |
+| Device reboots randomly | Power supply underpowered for matrix current draw |
+
+---
+
+## Contributing
+
+Pull requests welcome — new faces, display modes, case designs, wiring guides with photos.
+
+Please open an issue before starting large changes.
+
+---
+
+## License
+
+MIT — see [LICENSE](LICENSE).
+
+---
+
+## Acknowledgements
+
+Built on top of the official [Home Assistant Voice PE ESPHome firmware](https://github.com/esphome/home-assistant-voice-pe) by Nabu Casa.
