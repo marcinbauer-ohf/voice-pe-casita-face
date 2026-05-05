@@ -1,0 +1,54 @@
+blueprint:
+  name: "Casita – Doorbell notification"
+  description: >
+    Show a surprised face and scroll "Doorbell!" when a doorbell binary sensor triggers.
+    Returns to default face after a configurable delay.
+  domain: automation
+  input:
+    device_name:
+      name: ESPHome device name
+      description: >
+        The name of your device as set in home-assistant-voice.yaml (the `name` substitution).
+        Example: if your device is `home-assistant-voice`, enter `home_assistant_voice`.
+      selector:
+        text: {}
+    doorbell_sensor:
+      name: Doorbell sensor
+      description: Binary sensor that triggers when the doorbell is pressed.
+      selector:
+        entity:
+          domain: binary_sensor
+    message:
+      name: Message
+      description: Text to scroll on the display.
+      default: "Doorbell!"
+      selector:
+        text: {}
+    duration:
+      name: Duration (seconds)
+      description: How long before the display returns to normal.
+      default: 8
+      selector:
+        number:
+          min: 3
+          max: 60
+          unit_of_measurement: s
+
+trigger:
+  - platform: state
+    entity_id: !input doorbell_sensor
+    to: "on"
+
+action:
+  - service: "esphome.{{ device_name }}_display_text"
+    data:
+      message: !input message
+  - service: "esphome.{{ device_name }}_display_face_briefly"
+    data:
+      name: surprised
+      duration: !input duration
+  - delay:
+      seconds: !input duration
+  - service: "esphome.{{ device_name }}_display_face"
+    data:
+      name: default

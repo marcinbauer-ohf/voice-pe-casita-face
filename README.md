@@ -2,9 +2,9 @@
 
 > *Turning Home Assistant's iconic casita into a face.*
 
-A 3D-printed case shaped like the Home Assistant logo, fitted with a 16×8 LED matrix. Faces react to voice assistant state in real time. Also supports scrolling text, custom sprites, equalizer, and volume display.
+A mod for the Voice PE from the Open Home Foundation, fitted with a 16×8 LED matrix. Faces react to voice assistant state in real time. Also supports scrolling text and custom sprites.
 
-![Voice PE LED Matrix Face showing the default blue face](images/final-product.jpg)
+![Voice PE LED Matrix Face showing the default blue face](images/IMG_7704.jpeg)
 
 ---
 
@@ -23,11 +23,9 @@ A 3D-printed case shaped like the Home Assistant logo, fitted with a 16×8 LED m
 | Faces | Animated: default, happy, grin, sad, angry, surprised, neutral, listening, thinking, talking, sleeping |
 | Scrolling text | Send any message from Home Assistant to scroll across the matrix |
 | Custom sprites | Upload pixel-art animations via the included sprite editor |
-| Equalizer | Animated music visualizer bars |
-| Volume bar | Shows current volume level when adjusted |
-| Boot animation | Logo fade-in on startup |
+| Boot animation | Home Assistant logo fade-in on startup |
 
-The display integrates directly with the voice assistant — faces switch automatically when you speak, ask a question, get a response, or the device goes idle.
+The display integrates directly with the voice assistant — faces switch automatically when you speak, ask a question, get a response, or the device goes idle. You can also control what is displayed via a custom dashboard card.
 
 ---
 
@@ -40,15 +38,15 @@ The display integrates directly with the voice assistant — faces switch automa
 | Home Assistant Voice PE | The device this mod targets |
 | 2× [8×8 WS2812B LED matrix](https://allegro.pl/oferta/led-rgb-2812-matryca-8x8-64-diody-adresowalne-18292956151) | Chainable; these form the 16×8 display |
 | 330 Ω resistor | On the data line between Voice PE and the matrix |
-| 5 V PSU, min 2 A *(optional)* | The built-in USB-C can power the matrix at normal brightness. A dedicated supply is only needed if you run at full brightness for extended periods. |
+| 5 V PSU, min 2 A *(optional)* | The built-in USB-C can power the matrix at normal brightness. **A dedicated supply is only needed if you run at full brightness for extended periods.** |
 | 2-pin JST or similar connector *(optional)* | Only needed with an external PSU |
 | 20 AWG stranded wire | Power feed to the matrix (VCC + GND) — heavier gauge handles the current |
 | Dupont / Arduino wire connectors | For signal wiring — 24 AWG stranded, silicone-insulated preferred |
 | Heat shrink tubing | To insulate exposed solder joints and wires |
 | Small screwdriver set | To open the Voice PE enclosure |
 | Soldering iron + solder | For making connections to the Voice PE board |
-| 3D printer | To print the modified case that fits the matrix — STL files TBD |
-| 5× M4 30 mm screws *or* super glue | To assemble the printed enclosure |
+| 3D printer or a way to print the parts | To print the modified case that fits the matrix |
+| 5× M4 20 mm screws *or* super glue | To assemble the printed enclosure |
 | Double-sided sticky tape | To secure the LED matrix panels inside the frame |
 
 ### Software
@@ -57,7 +55,6 @@ The display integrates directly with the voice assistant — faces switch automa
 |---|---|
 | [Home Assistant](https://www.home-assistant.io/) | Required — the device connects to HA via ESPHome API |
 | [ESPHome](https://esphome.io/) | For compiling and flashing the firmware |
-| A modern web browser | To use the included sprite editor (no install needed) |
 | An AI coding assistant *(optional)* | Useful for editing `led_faces.h` to create new faces |
 
 ---
@@ -98,9 +95,6 @@ All files are in the `3d-parts/` folder. Print all parts from the same version �
 
 ## Build guide
 
-> [!NOTE]
-> Step-by-step photos and detailed wiring instructions are coming. The sections below are placeholders.
-
 ### 1. Print the parts
 
 Print all parts listed in the [3D printed parts](#3d-printed-parts) section above. Follow the material, colour, and support guidance in that section. Allow prints to finish before moving on — the case assembly is needed before you can solder in position.
@@ -117,21 +111,17 @@ Parts needed: main board, speaker, all screws
 
 #### LED face assembly and wiring
 
-![All parts needed for the led-frame assembly](images/IMG_7611.jpeg)
-
 - 2× LED panels
 - 3× black 24 AWG wires (10 cm)
-- 3× red 24 AWG wires (10 cm)
+- 2× red 24 AWG wires (10 cm)
 - 3× white 24 AWG wires (10 cm)
-- 3× Dupont connectors
+- 2× Dupont connectors
 - 3× heat shrink tubing
-- 2-pin JST connectors *(optional — only if using external PSU)*
+- 2-pin JST connectors, or any other connector to supply min. 1A via an additional cable
 
 ##### 2.1 Stick LED panels to LED-FRAME with double-sided tape
 
 Printed part rotation doesn't matter. Just make sure the LED panel alignment is the same on both. The 3-pin connector is optional and can be used to daisy-chain additional internal LEDs.
-
-![](images/IMG_7613.jpeg)
 
 Front:
 
@@ -141,16 +131,15 @@ Backside:
 
 ![](images/IMG_7615.jpeg)
 
-##### 2.2 Solder panels data line
+##### 2.2 Solder data line between the two panels
 
 ![](images/IMG_7616.jpeg)
 
-##### 2.3 Solder and secure GND and VCC cable assembly
+##### 2.3 Solder and secure GND and VCC cable
 
-The 2-pin JST male connector is optional if you want to power it with just USB.
+The 2-pin JST male connector is just my way to connect external power. You may cut and solder a USB cables VCC and GND that is capable of delivering 2A max, that is connected to a USB charger (2A).
 
-![](images/IMG_7617.jpeg)
-![](images/IMG_7618.jpeg)
+![](images/IMG_7674.jpg)
 
 ##### 2.4 Solder and secure data cable with 330 Ω resistor
 
@@ -160,27 +149,27 @@ The 2-pin JST male connector is optional if you want to power it with just USB.
 
 ![](images/IMG_7621.jpeg)
 
-##### 2.6 Solder the power assembly cable to the panels GND and VCC IN pads
+##### 2.6 Solder the VCC/GND cable to the panels GND and VCC IN pads
 
-![](images/IMG_7622.jpeg)
+![](images/IMG_7697.jpeg)
 
 ##### 2.7 Solder 2-pin JST female connector to wire for external PSU *(optional)*
+As I mentioned, you can use whatever power cable you like, as long as it can provide 1A at minimum. I connect mine to a Meanwell PSU.
 
 ![](images/IMG_7648.jpeg)
 
-##### 2.8 Secure with hot glue
-
-![](images/IMG_7649.jpeg)
 
 #### Case assembly
 
+##### 2.8 Secure the LED assembly with hot glue where needed
+
 ##### 2.9 Assemble CASE-BACK, MUTE-SWITCH and mainboard
 
-Put the mute switch in the case then align the mainboard's toggle tip through the mute-switch hole. Insert 5× M4 30 mm screws, or super-glue the front, middle and back parts at the end.
+Put the mute switch in the case then align the mainboard's toggle tip through the mute-switch hole, use original mainboard screws to secure it to the frame. Insert 5× M4 20 mm screws, or super-glue the front, middle and back parts at the end if you don't have the required screws.
 
 ![](images/IMG_7653.jpeg)
 
-##### 2.10 Mount the speaker
+##### 2.10 Mount the speaker on CASE-MIDDLE
 
 Align the speaker with the printed holes and secure with the original screws.
 
@@ -188,33 +177,30 @@ Align the speaker with the printed holes and secure with the original screws.
 
 ##### 2.11 Join CASE-BACK and CASE-MIDDLE
 
-Align the middle part with the back and screw in. Make sure the outer edges of the case align.
+Align the middle part with the back and screw in. Make sure the outer edges of the case align. Be careful not to screw the part too tightly. Connect the speaker to main board.
 
 ![](images/IMG_7654.jpeg)
 
-##### 2.12 Join CASE-FRONT, connect cables and close with CABLE-PLUG
+##### 2.12 Join and screw together CASE-FRONT
 
 When using screws, don't overtighten.
+![](images/IMG_7699.jpeg)
 
-![](images/IMG_7655.jpeg)
 
-##### 2.13 Connect cables to main board and snap in the face assembly
+##### 2.13 Connect DATA and GND cables
+![](images/IMG_7698.jpeg)
 
-- Connect panel GND (white cable) to main board GND pin
-- Connect panel VCC (red cable) to main board 5 V pin
-- Connect panel DATA (black cable) to main board RGB pin
+##### 2.14 Guide through Voice PE USB-C power cable, LED panels external cable, and any audio cables. Close with CABLE-PLUG
 
-> The matrix connects as an extension of the internal WS2812B strip at positions 12–139. You tap into the data-out of the last internal LED.
-
-![](images/IMG_7655.jpeg)
+![](images/IMG_7700.jpeg)
 
 ### 3. Flash the firmware
 
 #### Clone this repository
 
 ```bash
-git clone https://github.com/<your-username>/voice-pe-led-face.git
-cd voice-pe-led-face
+git clone https://github.com/marcinbauer-ohf/voice-pe-casita-face.git
+cd voice-pe-casita-face
 ```
 
 #### Copy config files into your ESPHome folder
@@ -251,7 +237,7 @@ The sprite editor is a self-contained HTML file — no server needed.
 1. Open `sprite-editor.html` in any modern browser
 2. Draw your sprite on the 16×8 pixel grid
 3. Add multiple frames for animation; set frame delay in milliseconds
-4. Enable **Crossfade** for smooth transitions between frames
+4. Enable **Crossfade** *(optionally)* for smooth transitions between frames
 5. Click **Copy to clipboard** (or use the export textarea)
 6. In Home Assistant, call the ESPHome service:
 
@@ -293,6 +279,7 @@ Once flashed, the device exposes these services under **Developer Tools → Serv
 | `display_equalizer` | — | Show equalizer animation |
 | `display_volume` | `volume: float` (0.0–1.0) | Show volume bar |
 | `display_off` | — | Turn off the matrix |
+| `display_solid` | `r`, `g`, `b` (int 0–255) | Fill all LEDs with a solid colour |
 
 ### Available faces
 
@@ -303,6 +290,22 @@ Face colors follow a consistent scheme:
 - **Green** — positive / talking / happy
 - **Orange** — attention / listening / thinking
 - **Red** — error / sad / angry
+
+---
+
+## Automation blueprints
+
+Ready-made blueprints are in the `blueprints/` folder. Copy them to `/config/blueprints/automation/casita/` on your Home Assistant instance, then import via **Settings → Automations → Blueprints**.
+
+| Blueprint | Description |
+|---|---|
+| `notify-face.yaml` | Show a named face for N seconds when any entity changes state |
+| `notify-text.yaml` | Scroll a message when any entity changes state, then return to face |
+| `solid-color-scene.yaml` | Fill all LEDs with a solid colour when a scene/entity activates; revert when it turns off |
+| `doorbell-notify.yaml` | Show surprised face + scroll text when a doorbell binary sensor triggers |
+| `dim-on-schedule.yaml` | Dim the display at night and restore in the morning — time or sun-based |
+
+All blueprints take an **ESPHome device name** input — this is the `name` value from `home-assistant-voice.yaml` with hyphens replaced by underscores (e.g. `home_assistant_voice`).
 
 ---
 

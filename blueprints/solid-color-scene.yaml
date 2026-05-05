@@ -1,0 +1,81 @@
+blueprint:
+  name: "Casita – Solid colour on trigger"
+  description: >
+    Light up all LEDs on the Voice PE Casita display with a solid colour when a trigger fires.
+    Useful for scene activation, alerts, or ambient lighting sync.
+  domain: automation
+  input:
+    device_name:
+      name: ESPHome device name
+      description: >
+        The name of your device as set in home-assistant-voice.yaml (the `name` substitution).
+        Example: if your device is `home-assistant-voice`, enter `home_assistant_voice`.
+      selector:
+        text: {}
+    color_r:
+      name: Red (0–255)
+      default: 255
+      selector:
+        number:
+          min: 0
+          max: 255
+    color_g:
+      name: Green (0–255)
+      default: 255
+      selector:
+        number:
+          min: 0
+          max: 255
+    color_b:
+      name: Blue (0–255)
+      default: 255
+      selector:
+        number:
+          min: 0
+          max: 255
+    trigger_entity:
+      name: Trigger entity
+      description: Entity whose state change triggers the automation.
+      selector:
+        entity: {}
+    trigger_to_state:
+      name: Trigger state
+      description: The state the entity must change to (e.g. "on", "movie").
+      default: "on"
+      selector:
+        text: {}
+    revert_entity_state:
+      name: Revert trigger state
+      description: State that causes the display to return to the default face.
+      default: "off"
+      selector:
+        text: {}
+
+trigger:
+  - platform: state
+    entity_id: !input trigger_entity
+    to: !input trigger_to_state
+    id: activate
+  - platform: state
+    entity_id: !input trigger_entity
+    to: !input revert_entity_state
+    id: revert
+
+action:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: activate
+        sequence:
+          - service: "esphome.{{ device_name }}_display_solid"
+            data:
+              r: !input color_r
+              g: !input color_g
+              b: !input color_b
+      - conditions:
+          - condition: trigger
+            id: revert
+        sequence:
+          - service: "esphome.{{ device_name }}_display_face"
+            data:
+              name: default
