@@ -327,6 +327,33 @@ All blueprints use an entity picker for the **Matrix Brightness** entity — no 
 
 ---
 
+## Face gallery
+
+### Expressions
+
+| Col 1 | Col 2 | Col 3 | Col 4 |
+|---|---|---|---|
+| ![default](images/faces/default.gif) default | ![neutral](images/faces/neutral.gif) neutral | ![happy](images/faces/happy.gif) happy | ![grin](images/faces/grin.gif) grin |
+| ![sad](images/faces/sad.gif) sad | ![angry](images/faces/angry.gif) angry | ![thinking](images/faces/thinking.gif) thinking | ![surprised](images/faces/surprised.gif) surprised |
+| ![listening](images/faces/listening.gif) listening | ![talking](images/faces/talking.gif) talking | ![sleeping](images/faces/sleeping.gif) sleeping | ![music](images/faces/music.gif) music |
+| ![giggle](images/faces/giggle.gif) giggle | ![heart](images/faces/heart.gif) heart | ![wink](images/faces/wink.gif) wink | ![joy](images/faces/joy.gif) joy |
+| ![laugh](images/faces/laugh.gif) laugh | ![error](images/faces/error.gif) error | ![cry](images/faces/cry.gif) cry | ![disconnected](images/faces/disconnected.gif) disconnected |
+
+### Feedback icons
+
+| Col 1 | Col 2 | Col 3 | Col 4 | Col 5 |
+|---|---|---|---|---|
+| ![light_on](images/faces/light_on.gif) light_on | ![light_off](images/faces/light_off.gif) light_off | ![switch_on](images/faces/switch_on.gif) switch_on | ![switch_off](images/faces/switch_off.gif) switch_off | ![scene](images/faces/scene.gif) scene |
+| ![lock_closed](images/faces/lock_closed.gif) lock_closed | ![lock_open](images/faces/lock_open.gif) lock_open | ![cover_up](images/faces/cover_up.gif) cover_up | ![cover_down](images/faces/cover_down.gif) cover_down | ![recording](images/faces/recording.gif) recording |
+
+### Animations
+
+| Col 1 | Col 2 |
+| --- | --- |
+| ![logo](images/faces/logo.gif) logo | ![dvd](images/faces/dvd.gif) dvd |
+
+---
+
 ## Adding custom faces
 
 Faces are defined in `led_faces.h` as sparse pixel arrays in `{x, y, R, G, B}` format. Each face can have multiple frames for animation. An AI coding assistant works well for generating face data from a description.
