@@ -1,0 +1,67 @@
+blueprint:
+  name: "Casita – Dim display on fixed time"
+  description: >
+    Dim the Voice PE Casita display at a set time and restore brightness at another time.
+  domain: automation
+  input:
+    brightness_entity:
+      name: Matrix Brightness entity
+      description: The "Matrix Brightness" entity of your Casita device.
+      selector:
+        entity:
+          domain: number
+    dim_level:
+      name: Dim brightness (%)
+      description: Brightness level when dimmed.
+      default: 10
+      selector:
+        number:
+          min: 1
+          max: 100
+          unit_of_measurement: "%"
+    normal_level:
+      name: Normal brightness (%)
+      description: Brightness level when restored.
+      default: 50
+      selector:
+        number:
+          min: 1
+          max: 100
+          unit_of_measurement: "%"
+    dim_time:
+      name: Dim time
+      description: Time to dim the display.
+      default: "22:00:00"
+      selector:
+        time: {}
+    restore_time:
+      name: Restore time
+      description: Time to restore brightness.
+      default: "07:00:00"
+      selector:
+        time: {}
+
+trigger:
+  - platform: time
+    at: !input dim_time
+    id: dim
+  - platform: time
+    at: !input restore_time
+    id: restore
+
+action:
+  - choose:
+      - conditions: "{{ trigger.id == 'dim' }}"
+        sequence:
+          - service: number.set_value
+            target:
+              entity_id: !input brightness_entity
+            data:
+              value: !input dim_level
+      - conditions: "{{ trigger.id == 'restore' }}"
+        sequence:
+          - service: number.set_value
+            target:
+              entity_id: !input brightness_entity
+            data:
+              value: !input normal_level

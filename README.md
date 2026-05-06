@@ -20,12 +20,17 @@ A mod for the Voice PE from the Open Home Foundation, fitted with a 16×8 LED ma
 
 | Display mode | Description |
 |---|---|
-| Faces | Animated: default, happy, grin, sad, angry, surprised, neutral, listening, thinking, talking, sleeping |
+| Faces | Animated: default, happy, grin, sad, angry, surprised, neutral, listening, thinking, talking, sleeping, and more |
 | Scrolling text | Send any message from Home Assistant to scroll across the matrix |
 | Custom sprites | Upload pixel-art animations via the included sprite editor |
+| Solid colour | Fill all LEDs with a colour — controlled via the LED Matrix light entity in HA |
+| Equalizer | Animated music visualizer bars |
 | Boot animation | Home Assistant logo fade-in on startup |
+| Disconnected | Automatically shown when HA API is offline for more than 15 seconds after boot |
 
 The display integrates directly with the voice assistant — faces switch automatically when you speak, ask a question, get a response, or the device goes idle. You can also control what is displayed via a custom dashboard card.
+
+> **Note:** The display sleep timer has been removed. Use the included dim blueprints to control brightness on a schedule instead.
 
 ---
 
@@ -205,7 +210,9 @@ cd voice-pe-casita-face
 
 #### Copy config files into your ESPHome folder
 
-Copy `home-assistant-voice.yaml` and `led_faces.h` into your ESPHome configuration directory (usually `/config/esphome/` on Home Assistant OS).
+Copy `home-assistant-voice.yaml`, `led_faces.h`, and the `components/` folder into your ESPHome configuration directory (usually `/config/esphome/` on Home Assistant OS).
+
+> The `components/const/__init__.py` local override is required to fix a compatibility issue between ESPHome 2026.x and the Voice PE external components. Without it the firmware will not compile.
 
 #### Set your Wi-Fi credentials
 
@@ -275,21 +282,34 @@ Once flashed, the device exposes these services under **Developer Tools → Serv
 | `display_face_briefly` | `name`, `duration` (seconds) | Show face temporarily, then return |
 | `display_text` | `message: string` | Scroll text across the matrix |
 | `display_sprite` | `frames`, `frame_count`, `frame_ms`, `fade` | Show custom sprite animation |
-| `display_wake` | — | Wake from sleep, show default face |
+| `display_wake` | — | Return to default face |
 | `display_equalizer` | — | Show equalizer animation |
-| `display_volume` | `volume: float` (0.0–1.0) | Show volume bar |
+| `display_solid` | `r`, `g`, `b` (int 0–255) | Fill all LEDs with a solid colour — or set colour via the LED Matrix light entity in HA |
 | `display_off` | — | Turn off the matrix |
-| `display_solid` | `r`, `g`, `b` (int 0–255) | Fill all LEDs with a solid colour |
 
 ### Available faces
 
-`default` · `neutral` · `happy` · `grin` · `sad` · `angry` · `surprised` · `thinking` · `talking` · `listening` · `sleeping`
+`default` · `neutral` · `happy` · `grin` · `sad` · `angry` · `surprised` · `thinking` · `talking` · `listening` · `sleeping` · `music` · `giggle` · `heart` · `wink` · `joy` · `laugh` · `error` · `cry` · `disconnected`
+
+> `rick` is available as a sprite — see the Animations section of the dashboard card.
 
 Face colors follow a consistent scheme:
 - **Blue** — idle / calm
 - **Green** — positive / talking / happy
 - **Orange** — attention / listening / thinking
 - **Red** — error / sad / angry
+
+### Device entities
+
+After flashing, the device exposes these entities in Home Assistant:
+
+| Entity | Type | Description |
+|---|---|---|
+| `Matrix Brightness` | Number (slider) | Overall display brightness 5–100% |
+| `Matrix Dim Brightness` | Number (slider) | Target brightness for dim blueprints 1–100% |
+| `Scroll Speed` | Number (slider) | Text scroll speed in ms per step |
+| `Matrix Message` | Text | Message to display via Send Text |
+| `Matrix Display Status` | Sensor | Current display mode/face as a string |
 
 ---
 
@@ -300,12 +320,10 @@ Ready-made blueprints are in the `blueprints/` folder. Copy them to `/config/blu
 | Blueprint | Description |
 |---|---|
 | `notify-face.yaml` | Show a named face for N seconds when any entity changes state |
-| `notify-text.yaml` | Scroll a message when any entity changes state, then return to face |
-| `solid-color-scene.yaml` | Fill all LEDs with a solid colour when a scene/entity activates; revert when it turns off |
-| `doorbell-notify.yaml` | Show surprised face + scroll text when a doorbell binary sensor triggers |
-| `dim-on-schedule.yaml` | Dim the display at night and restore in the morning — time or sun-based |
+| `dim-on-time.yaml` | Dim the display at a fixed time and restore at another |
+| `dim-on-sun.yaml` | Dim the display at sunset and restore at sunrise |
 
-All blueprints take an **ESPHome device name** input — this is the `name` value from `home-assistant-voice.yaml` with hyphens replaced by underscores (e.g. `home_assistant_voice`).
+All blueprints use an entity picker for the **Matrix Brightness** entity — no device name typing required. Copy blueprints to `/config/blueprints/automation/voice-pe-casita-face/` and reload via **Settings → Automations → Blueprints**.
 
 ---
 
@@ -324,6 +342,9 @@ Faces are defined in `led_faces.h` as sparse pixel arrays in `{x, y, R, G, B}` f
 | Device offline after flash | Wi-Fi credentials wrong in `secrets.yaml` |
 | Faces show but dim | Check `Matrix Brightness` slider in HA entity |
 | Device reboots randomly | Power supply underpowered for matrix current draw |
+| `Cannot import KEY_METADATA` compile error | `components/` folder missing — copy it to your ESPHome config directory alongside the YAML |
+| Default face not showing after boot | Re-flash — this was a known bug fixed in the current firmware |
+| Wake word not working after flash | Check that the `components/const/__init__.py` override is present — a wrong version breaks the voice kit |
 
 ---
 

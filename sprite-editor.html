@@ -166,6 +166,7 @@
         <input type="file" id="importFile" accept=".json" style="display:none" onchange="importLibrary(event)">
         <button class="btn" onclick="document.getElementById('importHeaderFile').click()" title="Import all faces from led_faces.h into library">Import led_faces.h</button>
         <input type="file" id="importHeaderFile" accept=".h,.hpp" style="display:none" onchange="importFromHeader(event)">
+        <button class="btn danger" onclick="clearLibrary()">Clear Library</button>
       </div>
       <div id="libraryList" class="library-list"></div>
     </div>
@@ -673,6 +674,13 @@ function getLibrary() {
 function setLibrary(lib) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(lib));
   renderLibrary();
+}
+
+function clearLibrary() {
+  if (!confirm('Clear all saved sprites from localStorage? This cannot be undone.')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  renderLibrary();
+  showToast('Library cleared');
 }
 
 function newSprite() {
