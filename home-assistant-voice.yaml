@@ -5,6 +5,12 @@ substitutions:
 packages:
   Nabu Casa.Home Assistant Voice PE: github://esphome/home-assistant-voice-pe/home-assistant-voice.yaml
 
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [const]
+
 esphome:
   name: ${name}
   name_add_mac_suffix: false
@@ -38,6 +44,15 @@ esphome:
 api:
   encryption:
     key: !secret api_encryption_key
+  on_client_connected:
+    - lambda: |-
+        id(ha_connected) = true;
+        if (id(display_mode) == 11) {
+          id(display_mode) = 5;
+          id(face_name) = "default";
+        }
+  on_client_disconnected:
+    - lambda: id(ha_connected) = false;
   services:
     - service: display_text
       variables:
@@ -80,6 +95,17 @@ api:
         - globals.set:
             id: display_mode
             value: '2'
+    - service: display_progress
+      variables:
+        value: float
+      then:
+        - globals.set:
+            id: display_mode
+            value: '4'
+        - globals.set:
+            id: progress_value
+            value: !lambda 'return value;'
+        - lambda: id(matrix_brightness).make_call().set_value(50).perform();
     - service: display_volume
       variables:
         volume: float
@@ -138,6 +164,25 @@ api:
             id(is_sleeping) = false;
             id(idle_since_ms) = 0;
             id(matrix_brightness).make_call().set_value(50).perform();
+    - service: display_solid
+      variables:
+        r: int
+        g: int
+        b: int
+      then:
+        - globals.set:
+            id: display_mode
+            value: '10'
+        - globals.set:
+            id: solid_r
+            value: !lambda 'return r;'
+        - globals.set:
+            id: solid_g
+            value: !lambda 'return g;'
+        - globals.set:
+            id: solid_b
+            value: !lambda 'return b;'
+        - lambda: id(matrix_brightness).make_call().set_value(50).perform();
 
 wifi:
   ssid: !secret wifi_ssid
@@ -204,6 +249,26 @@ globals:
     type: float
     restore_value: false
     initial_value: '0.5'
+  - id: ha_connected
+    type: bool
+    restore_value: false
+    initial_value: 'false'
+  - id: progress_value
+    type: float
+    restore_value: false
+    initial_value: '0.0'
+  - id: solid_r
+    type: int
+    restore_value: false
+    initial_value: '255'
+  - id: solid_g
+    type: int
+    restore_value: false
+    initial_value: '255'
+  - id: solid_b
+    type: int
+    restore_value: false
+    initial_value: '255'
 
 script:
   - id: face_briefly_return
@@ -231,6 +296,28 @@ text_sensor:
     id: display_status
     name: "Matrix Display Status"
     icon: "mdi:led-strip"
+
+text:
+  - platform: template
+    name: "Matrix Message"
+    id: matrix_message
+    icon: "mdi:message-text"
+    optimistic: true
+    min_length: 0
+    max_length: 255
+    mode: text
+
+button:
+  - platform: template
+    name: "Send Matrix Message"
+    id: send_matrix_message
+    icon: "mdi:send"
+    on_press:
+      - lambda: |-
+          id(display_mode) = 0;
+          id(scroll_text) = id(matrix_message).state;
+          id(scroll_pos) = 16;
+          id(matrix_brightness).make_call().set_value(50).perform();
 
 font:
   - file: "gfonts://Pixelify Sans"
@@ -263,6 +350,63 @@ number:
     initial_value: 50
     unit_of_measurement: "%"
     mode: slider
+  - platform: template
+    name: "Matrix Dim Brightness"
+    id: matrix_dim_brightness
+    icon: "mdi:brightness-3"
+    min_value: 1
+    max_value: 100
+    step: 1
+    optimistic: true
+    restore_value: true
+    initial_value: 10
+    unit_of_measurement: "%"
+    mode: slider
+  - platform: template
+    name: "Solid Red"
+    id: solid_r_entity
+    icon: "mdi:palette"
+    min_value: 0
+    max_value: 255
+    step: 1
+    optimistic: true
+    restore_value: true
+    initial_value: 255
+    mode: slider
+    set_action:
+      - globals.set:
+          id: solid_r
+          value: !lambda 'return (int)x;'
+  - platform: template
+    name: "Solid Green"
+    id: solid_g_entity
+    icon: "mdi:palette"
+    min_value: 0
+    max_value: 255
+    step: 1
+    optimistic: true
+    restore_value: true
+    initial_value: 255
+    mode: slider
+    set_action:
+      - globals.set:
+          id: solid_g
+          value: !lambda 'return (int)x;'
+  - platform: template
+    name: "Solid Blue"
+    id: solid_b_entity
+    icon: "mdi:palette"
+    min_value: 0
+    max_value: 255
+    step: 1
+    optimistic: true
+    restore_value: true
+    initial_value: 255
+    mode: slider
+    set_action:
+      - globals.set:
+          id: solid_b
+          value: !lambda 'return (int)x;'
 
 display:
   - platform: addressable_light
@@ -285,7 +429,7 @@ display:
         else if (m == 1) status = "sprite";
         else if (m == 2) status = "off";
         else if (m == 3) status = "rainbow";
-        else if (m == 4) status = "pulse";
+        else if (m == 4) status = "progress";
         else if (m == 5) {
           int ph = id(voice_assistant_phase);
           std::string displayed;
@@ -303,6 +447,8 @@ display:
         else if (m == 7) status = "equalizer";
         else if (m == 8) status = "boot:fade";
         else if (m == 9) status = "volume";
+        else if (m == 10) status = "solid";
+        else if (m == 11) status = "disconnected";
         else             status = "unknown";
         if (status != last_published_status) {
           last_published_status = status;
@@ -320,7 +466,7 @@ display:
       if (actual < target) actual = min(actual + 0.02f, target);
       else if (actual > target) actual = max(actual - 0.02f, target);
       id(brightness_actual) = actual;
-      if (!id(is_sleeping)) {
+      if (!id(is_sleeping) && id(boot_complete)) {
         float slider = id(matrix_brightness).state / 100.0f;
         if (fabsf(slider - target) > 0.01f) {
           id(brightness_target) = slider;
@@ -345,6 +491,10 @@ display:
         } else {
           return;
         }
+      }
+      if (id(boot_complete) && !id(ha_connected) && (millis() - id(boot_complete_ms) > 15000)) {
+        mode = 11;
+        id(display_mode) = 11;
       }
       it.fill(Color::BLACK);
       if (mode == 0) {
@@ -450,20 +600,9 @@ display:
         else if (phase == 1 && last_auto_face != "" && last_auto_face != "default") {
           auto_face = "default";
         }
-        if (phase == 1 && id(boot_complete)) {
-          if (id(idle_since_ms) == 0) id(idle_since_ms) = now;
-          if (!id(is_sleeping) && now - id(idle_since_ms) >= 30000) {
-            id(is_sleeping) = true;
-            auto_face = "sleeping";
-            id(brightness_target) = 0.05f;
-          }
-        } else {
-          if (id(is_sleeping)) {
-            id(is_sleeping) = false;
-            id(idle_since_ms) = 0;
-            id(brightness_target) = id(matrix_brightness).state / 100.0f;
-          }
-          id(idle_since_ms) = 0;
+        if (phase != 1 && id(is_sleeping)) {
+          id(is_sleeping) = false;
+          id(brightness_target) = id(matrix_brightness).state / 100.0f;
         }
         if (auto_face && last_auto_face != auto_face) {
           last_auto_face = auto_face;
@@ -471,9 +610,7 @@ display:
           face_cur_frame = 0;
           face_last_switch = now;
         }
-        const std::string& render_face = (phase != 1)       ? last_auto_face
-                                       : id(is_sleeping)     ? std::string("sleeping")
-                                                             : id(face_name);
+        const std::string& render_face = (phase != 1) ? last_auto_face : id(face_name);
         const Face* face = find_face(render_face);
         if (face->nf > 1 && now - face_last_switch >= 300) {
           face_last_switch = now;
@@ -486,21 +623,26 @@ display:
           it.draw_pixel_at(f[i], f[i+1], Color(dim(f[i+2]), dim(f[i+3]), dim(f[i+4])));
         }
       } else if (mode == 4) {
-        static uint32_t pulse_start = 0;
-        if (pulse_start == 0) pulse_start = millis();
-        uint32_t elapsed = millis() - pulse_start;
-        int phase = elapsed % 2000;
-        uint8_t bright;
-        if (phase < 1000) {
-          bright = (phase * 128) / 1000;
-        } else {
-          bright = ((2000 - phase) * 128) / 1000;
-        }
-        if (bright < 25) bright = 25;
-        for (int y = 0; y < 8; y++) {
-          for (int x = 0; x < 16; x++) {
-            it.draw_pixel_at(x, y, Color(dim(bright), dim(bright), dim(bright)));
+        float prog = id(progress_value);
+        if (prog < 0.0f) prog = 0.0f;
+        if (prog > 1.0f) prog = 1.0f;
+        int filled = (int)(prog * 16.0f);
+        if (filled > 16) filled = 16;
+        for (int x = 0; x < 16; x++) {
+          for (int y = 0; y < 8; y++) {
+            if (x < filled) {
+              uint8_t r, g, b;
+              if (x < 5)       { r = 0;   g = 200; b = 60; }
+              else if (x < 11) { r = 220; g = 180; b = 0;  }
+              else             { r = 220; g = 40;  b = 0;  }
+              if (x == filled - 1) { r = 255; g = 255; b = 255; }
+              it.draw_pixel_at(x, y, Color(dim(r), dim(g), dim(b)));
+            }
           }
+        }
+        for (int x = 0; x < 16; x += 4) {
+          it.draw_pixel_at(x, 0, Color(dim(30), dim(30), dim(30)));
+          it.draw_pixel_at(x, 7, Color(dim(30), dim(30), dim(30)));
         }
       } else if (mode == 6) {
         static int boot_frame = 0;
@@ -584,6 +726,27 @@ display:
           it.draw_pixel_at(x, 0, Color(dim(40), dim(40), dim(40)));
           it.draw_pixel_at(x, 7, Color(dim(40), dim(40), dim(40)));
         }
+      } else if (mode == 10) {
+        uint8_t r = (uint8_t)id(solid_r);
+        uint8_t g = (uint8_t)id(solid_g);
+        uint8_t b = (uint8_t)id(solid_b);
+        for (int y = 0; y < 8; y++) {
+          for (int x = 0; x < 16; x++) {
+            it.draw_pixel_at(x, y, Color(dim(r), dim(g), dim(b)));
+          }
+        }
+      } else if (mode == 11) {
+        static int dc_frame = 0;
+        static uint32_t dc_last = 0;
+        uint32_t now = millis();
+        if (now - dc_last >= 600) { dc_last = now; dc_frame = (dc_frame + 1) % 2; }
+        const Face* face = find_face("disconnected");
+        const uint8_t* f = face->f[dc_frame];
+        if (f) {
+          for (int i = 0; f[i] != 255; i += 5) {
+            it.draw_pixel_at(f[i], f[i+1], Color(dim(f[i+2]), dim(f[i+3]), dim(f[i+4])));
+          }
+        }
       }
 
 light:
@@ -599,3 +762,9 @@ light:
         from: 12
         to: 139
     effects: []
+    on_state:
+      - lambda: |-
+          auto c = id(led_matrix).current_values;
+          id(solid_r) = (int)(c.get_red()   * 255);
+          id(solid_g) = (int)(c.get_green() * 255);
+          id(solid_b) = (int)(c.get_blue()  * 255);
