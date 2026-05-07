@@ -1,7 +1,5 @@
 # Voice PE: Casita LED mod
 
-> *Turning Home Assistant's iconic casita into a face.*
-
 A mod for the Voice PE from the Open Home Foundation, fitted with a 16×8 LED matrix. Faces react to voice assistant state in real time. Also supports scrolling text and custom sprites.
 
 ![Voice PE LED Matrix Face showing the default blue face](images/IMG_7704.jpeg)
@@ -12,7 +10,7 @@ A mod for the Voice PE from the Open Home Foundation, fitted with a 16×8 LED ma
 > **This mod will void your Voice PE warranty.** Disassembling the device and soldering to its internals can permanently brick it. Proceed at your own risk. Start by making a backup of your current ESPHome configuration.
 
 > [!NOTE]
-> This is **not** an official Open Home Foundation (OHF) or Nabu Casa product. It was made by an OHF employee as a personal project. No support is provided beyond this documentation.
+> This is **not** an official Open Home Foundation (OHF) or Nabu Casa product. It was made by me as a personal project. No support is provided beyond this documentation.
 
 ---
 
@@ -29,8 +27,6 @@ A mod for the Voice PE from the Open Home Foundation, fitted with a 16×8 LED ma
 | Disconnected | Automatically shown when HA API is offline for more than 15 seconds after boot |
 
 The display integrates directly with the voice assistant — faces switch automatically when you speak, ask a question, get a response, or the device goes idle. You can also control what is displayed via a custom dashboard card.
-
-> **Note:** The display sleep timer has been removed. Use the included dim blueprints to control brightness on a schedule instead.
 
 ---
 
@@ -72,15 +68,15 @@ All files are in the `3d-parts/` folder. Print all parts from the same version �
 **Nozzle:** 0.4 mm (model optimised for this size)  
 **Recommended printer:** Bambu A1
 
-| File | Description | Supports | Notes |
-|---|---|---|---|
-| `CABLE-PLUG.3mf` | Plug for the cable opening | None | |
-| `CASE-BACK.3mf` | Rear enclosure panel | Minimal (flat orientation) | Can also be printed same as CASE-FRONT with full supports |
-| `CASE-FRONT.3mf` | Front enclosure panel | Full model | Needed for clean rounded shape |
-| `CASE-MIDDLE.3mf` | Middle section joining front and back | Outer edge only | |
-| `LED-FRAME.3mf` | Frame that holds the LED matrix panels in place | None | |
-| `LED-MASK.3mf` | Diffuser mask over the matrix | None | **Print in black** |
-| `MUTE-SWITCH.3mf` | Replacement mute button cap | None | |
+| Preview | File | Description | Supports | Notes |
+| --- | --- | --- | --- | --- |
+| ![CABLE-PLUG](images/parts/cable-plug.png) | `CABLE-PLUG.3mf` | Plug for the cable opening | None | |
+| ![CASE-BACK](images/parts/case-back.png) | `CASE-BACK.3mf` | Rear enclosure panel | Minimal (flat orientation) | Can also be printed same as CASE-FRONT with full supports |
+| ![CASE-FRONT](images/parts/case-front.png) | `CASE-FRONT.3mf` | Front enclosure panel | Full model | Needed for clean rounded shape |
+| ![CASE-MIDDLE](images/parts/case-middle.png) | `CASE-MIDDLE.3mf` | Middle section joining front and back | Outer edge only | |
+| ![LED-FRAME](images/parts/led-frame.png) | `LED-FRAME.3mf` | Frame that holds the LED matrix panels in place | None | |
+| ![LED-MASK](images/parts/led-mask.png) | `LED-MASK.3mf` | Diffuser mask over the matrix | None | **Print in black** |
+| ![MUTE-SWITCH](images/parts/mute-switch.png) | `MUTE-SWITCH.3mf` | Replacement mute button cap | None | |
 
 ### Version compatibility
 
@@ -306,9 +302,11 @@ After flashing, the device exposes these entities in Home Assistant:
 | Entity | Type | Description |
 |---|---|---|
 | `Matrix Brightness` | Number (slider) | Overall display brightness 5–100% |
-| `Matrix Dim Brightness` | Number (slider) | Target brightness for dim blueprints 1–100% |
+| `Matrix Dim Brightness` | Number (slider) | Stored dim level used by dim blueprints 1–100% |
 | `Scroll Speed` | Number (slider) | Text scroll speed in ms per step |
-| `Matrix Message` | Text | Message to display via Send Text |
+| `Solid Red` / `Solid Green` / `Solid Blue` | Number (slider) | RGB values for solid colour mode 0–255 |
+| `Matrix Message` | Text | Message to send to the scrolling display |
+| `Send Matrix Message` | Button | Sends current `Matrix Message` value to the display |
 | `Matrix Display Status` | Sensor | Current display mode/face as a string |
 
 ---
@@ -323,7 +321,7 @@ Ready-made blueprints are in the `blueprints/` folder. Copy them to `/config/blu
 | `dim-on-time.yaml` | Dim the display at a fixed time and restore at another |
 | `dim-on-sun.yaml` | Dim the display at sunset and restore at sunrise |
 
-All blueprints use an entity picker for the **Matrix Brightness** entity — no device name typing required. Copy blueprints to `/config/blueprints/automation/voice-pe-casita-face/` and reload via **Settings → Automations → Blueprints**.
+Dim blueprints use entity pickers for **Matrix Brightness** and **Matrix Dim Brightness** — set your dim level in the `Matrix Dim Brightness` slider on the device, then pick it in the blueprint. Normal/restore brightness is a number input in the blueprint itself. Copy blueprints to `/config/blueprints/automation/voice-pe-casita-face/` and reload via **Settings → Automations → Blueprints**.
 
 ---
 
