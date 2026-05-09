@@ -1,0 +1,76 @@
+blueprint:
+  name: "Casita – Dim display when idle"
+  description: >
+    Dim the Voice PE Casita display after it has been showing the default face
+    for a set amount of time. Restores brightness when the display becomes active again
+    (voice assistant, text, sprite, etc.).
+  domain: automation
+  input:
+    status_entity:
+      name: Matrix Display Status entity
+      description: The "Matrix Display Status" sensor entity of your Casita device.
+      selector:
+        entity:
+          domain: sensor
+    brightness_entity:
+      name: Matrix Brightness entity
+      description: The "Matrix Brightness" entity of your Casita device.
+      selector:
+        entity:
+          domain: number
+    dim_entity:
+      name: Matrix Dim Brightness entity
+      description: The "Matrix Dim Brightness" entity of your Casita device.
+      selector:
+        entity:
+          domain: number
+    normal_level:
+      name: Normal brightness (%)
+      description: Brightness to restore to when the display becomes active.
+      default: 50
+      selector:
+        number:
+          min: 1
+          max: 100
+          unit_of_measurement: "%"
+    idle_timeout:
+      name: Idle timeout (minutes)
+      description: How long the display must show the default face before dimming.
+      default: 5
+      selector:
+        number:
+          min: 1
+          max: 120
+          unit_of_measurement: min
+
+variables:
+  dim_entity: !input dim_entity
+
+trigger:
+  - platform: state
+    entity_id: !input status_entity
+    to: "face:default"
+    for:
+      minutes: !input idle_timeout
+    id: idle
+  - platform: state
+    entity_id: !input status_entity
+    from: "face:default"
+    id: wake
+
+action:
+  - choose:
+      - conditions: "{{ trigger.id == 'idle' }}"
+        sequence:
+          - service: number.set_value
+            target:
+              entity_id: !input brightness_entity
+            data:
+              value: "{{ states(dim_entity) | float }}"
+      - conditions: "{{ trigger.id == 'wake' }}"
+        sequence:
+          - service: number.set_value
+            target:
+              entity_id: !input brightness_entity
+            data:
+              value: !input normal_level

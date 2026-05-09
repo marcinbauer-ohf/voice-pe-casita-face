@@ -39,10 +39,10 @@ The display integrates directly with the voice assistant — faces switch automa
 | Home Assistant Voice PE | The device this mod targets |
 | 2× [8×8 WS2812B LED matrix](https://allegro.pl/oferta/led-rgb-2812-matryca-8x8-64-diody-adresowalne-18292956151) | Chainable; these form the 16×8 display |
 | 330 Ω resistor | On the data line between Voice PE and the matrix |
-| 5 V PSU, min 2 A *(optional)* | The built-in USB-C can power the matrix at normal brightness. **A dedicated supply is only needed if you run at full brightness for extended periods.** |
+| 5 V power source, min 2 A | It's not recommended to use the VPE 5V pin. It may cause brownouts or your VPE to fail. |
 | 2-pin JST or similar connector *(optional)* | Only needed with an external PSU |
 | 20 AWG stranded wire | Power feed to the matrix (VCC + GND) — heavier gauge handles the current |
-| Dupont / Arduino wire connectors | For signal wiring — 24 AWG stranded, silicone-insulated preferred |
+| Dupont / Arduino wire connectors | For signal wiring |
 | Heat shrink tubing | To insulate exposed solder joints and wires |
 | Small screwdriver set | To open the Voice PE enclosure |
 | Soldering iron + solder | For making connections to the Voice PE board |
@@ -162,7 +162,7 @@ As I mentioned, you can use whatever power cable you like, as long as it can pro
 
 #### Case assembly
 
-##### 2.8 Secure the LED assembly with hot glue where needed
+##### 2.8 Secure the soldered LED contanct points with hot glue where needed
 
 ##### 2.9 Assemble CASE-BACK, MUTE-SWITCH and mainboard
 
@@ -217,7 +217,10 @@ In your ESPHome `secrets.yaml`:
 ```yaml
 wifi_ssid: "YourNetwork"
 wifi_password: "YourPassword"
+api_encryption_key: "<generate in ESPHome dashboard — 32 bytes base64>"
 ```
+
+To generate an API key: in the ESPHome dashboard click **Secrets** → **Generate** next to a new key, or run `openssl rand -base64 32` in a terminal.
 
 #### Update the device name
 
@@ -265,6 +268,148 @@ data:
 | Undo / Redo | Full history |
 | Sprite library | Save and reload named sprites locally in the browser |
 | Preview | Animated real-time preview at matrix scale |
+
+---
+
+## Dashboard card
+
+A custom Lovelace card (`led-matrix-card.js`) provides a live pixel preview of the matrix, a face gallery, and buttons to control every display mode.
+
+### 1. Install the card
+
+Copy `led-matrix-card.js` from this repo to your Home Assistant `/config/www/` folder.
+
+Then register it as a Lovelace resource:
+
+1. Go to **Settings → Dashboards → ⋮ (menu) → Resources**
+2. Click **+ Add resource**
+3. URL: `/local/led-matrix-card.js`
+4. Type: **JavaScript module**
+5. Save and reload the browser
+
+### 2. Create a dashboard
+
+Create a new dashboard (or use an existing one) and add a card in YAML mode. Replace `home_assistant_voice` with your device's name (the `name` substitution from `home-assistant-voice.yaml`, with hyphens replaced by underscores):
+
+```yaml
+type: vertical-stack
+cards:
+  - type: custom:led-matrix-card
+    status_entity: sensor.home_assistant_voice_matrix_display_status
+    satellite_entity: assist_satellite.voice_assist_satellite
+    esphome_device: home_assistant_voice
+    pixel_size: 30
+    show_label: true
+  - type: entity
+    entity: sensor.home_assistant_voice_matrix_display_status
+    name: Current Display
+  - type: markdown
+    content: "## Faces"
+  - type: grid
+    columns: 4
+    cards:
+      - type: button
+        name: Default
+        icon: mdi:emoticon-neutral
+        tap_action:
+          action: call-service
+          service: esphome.home_assistant_voice_display_face
+          data:
+            name: default
+      - type: button
+        name: Happy
+        icon: mdi:emoticon-happy
+        tap_action:
+          action: call-service
+          service: esphome.home_assistant_voice_display_face
+          data:
+            name: happy
+      - type: button
+        name: Sad
+        icon: mdi:emoticon-sad
+        tap_action:
+          action: call-service
+          service: esphome.home_assistant_voice_display_face
+          data:
+            name: sad
+      - type: button
+        name: Angry
+        icon: mdi:emoticon-angry
+        tap_action:
+          action: call-service
+          service: esphome.home_assistant_voice_display_face
+          data:
+            name: angry
+      - type: button
+        name: Thinking
+        icon: mdi:emoticon-confused
+        tap_action:
+          action: call-service
+          service: esphome.home_assistant_voice_display_face
+          data:
+            name: thinking
+      - type: button
+        name: Surprised
+        icon: mdi:emoticon-excited
+        tap_action:
+          action: call-service
+          service: esphome.home_assistant_voice_display_face
+          data:
+            name: surprised
+      - type: button
+        name: Sleeping
+        icon: mdi:sleep
+        tap_action:
+          action: call-service
+          service: esphome.home_assistant_voice_display_face
+          data:
+            name: sleeping
+      - type: button
+        name: Equalizer
+        icon: mdi:equalizer
+        tap_action:
+          action: call-service
+          service: esphome.home_assistant_voice_display_equalizer
+  - type: markdown
+    content: "## Controls"
+  - type: entities
+    entities:
+      - entity: text.home_assistant_voice_matrix_message
+        name: Message
+  - type: grid
+    columns: 3
+    cards:
+      - type: button
+        name: Wake Display
+        icon: mdi:weather-sunny
+        tap_action:
+          action: call-service
+          service: esphome.home_assistant_voice_display_wake
+      - type: button
+        name: Send Text
+        icon: mdi:send
+        tap_action:
+          action: call-service
+          service: button.press
+          target:
+            entity_id: button.home_assistant_voice_send_matrix_message
+      - type: button
+        name: "Off"
+        icon: mdi:power
+        tap_action:
+          action: call-service
+          service: esphome.home_assistant_voice_display_off
+  - type: entities
+    entities:
+      - entity: number.home_assistant_voice_matrix_brightness
+        name: Brightness
+      - entity: number.home_assistant_voice_matrix_dim_brightness
+        name: Dim Brightness
+      - entity: number.home_assistant_voice_scroll_speed
+        name: Scroll Speed
+```
+
+> The card auto-follows the voice assistant state — faces switch in the preview as the device reacts to speech. The **Gallery** button shows all available faces.
 
 ---
 
