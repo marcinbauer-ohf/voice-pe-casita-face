@@ -23,6 +23,7 @@ A mod for the Voice PE from the Open Home Foundation, fitted with a 16×8 LED ma
 | Custom sprites | Upload pixel-art animations via the included sprite editor |
 | Solid colour | Fill all LEDs with a colour — controlled via the LED Matrix light entity in HA |
 | Equalizer | Animated music visualizer bars |
+| Progress bar | Generic 0–100% horizontal bar, green→yellow→red |
 | Boot animation | Home Assistant logo fade-in on startup |
 | Disconnected | Automatically shown when HA API is offline for more than 15 seconds after boot |
 
@@ -197,20 +198,36 @@ When using screws, don't overtighten.
 
 ### 3. Flash the firmware
 
-#### Clone this repository
+There are two options — use the pre-built binary for the fastest setup, or compile your own for full control.
+
+---
+
+#### Option A — Flash the pre-built binary (easiest)
+
+1. Download `firmware.factory.bin` from the [latest release](https://github.com/marcinbauer-ohf/voice-pe-casita-face/releases/latest)
+2. Connect the Voice PE via USB
+3. Open [ESPHome Web Flasher](https://web.esphome.io) in Chrome or Edge
+4. Click **Connect**, select the device serial port
+5. Click **Install**, then select the downloaded `.bin` file
+6. After flashing, the device creates a Wi-Fi hotspot — connect to it and enter your Wi-Fi credentials
+7. Home Assistant will discover the device automatically via mDNS
+
+> The pre-built binary uses HA-managed API key negotiation. No secrets file needed.
+
+---
+
+#### Option B — Compile your own
+
+Clone this repository:
 
 ```bash
 git clone https://github.com/marcinbauer-ohf/voice-pe-casita-face.git
 cd voice-pe-casita-face
 ```
 
-#### Copy config files into your ESPHome folder
-
 Copy `home-assistant-voice.yaml`, `led_faces.h`, and the `components/` folder into your ESPHome configuration directory (usually `/config/esphome/` on Home Assistant OS).
 
 > The `components/const/__init__.py` local override is required to fix a compatibility issue between ESPHome 2026.x and the Voice PE external components. Without it the firmware will not compile.
-
-#### Set your Wi-Fi credentials
 
 In your ESPHome `secrets.yaml`:
 
@@ -222,15 +239,11 @@ api_encryption_key: "<generate in ESPHome dashboard — 32 bytes base64>"
 
 To generate an API key: in the ESPHome dashboard click **Secrets** → **Generate** next to a new key, or run `openssl rand -base64 32` in a terminal.
 
-#### Update the device name
-
-Open `home-assistant-voice.yaml` and change the `name` and `friendly_name` substitutions to match your device.
-
-#### Flash via ESPHome dashboard
+Open `home-assistant-voice.yaml` and change the `name` and `friendly_name` substitutions, then flash via ESPHome dashboard:
 
 1. Open **Settings → Add-ons → ESPHome** in Home Assistant
 2. Find your device and click **Install**
-3. Choose **Wirelessly** if the device is already online, or **Plug into this computer** for first-time flash
+3. Choose **Wirelessly** if already online, or **Plug into this computer** for first-time flash
 
 The device will reboot and show the boot animation on the matrix.
 
@@ -425,6 +438,7 @@ Once flashed, the device exposes these services under **Developer Tools → Serv
 | `display_sprite` | `frames`, `frame_count`, `frame_ms`, `fade` | Show custom sprite animation |
 | `display_wake` | — | Return to default face |
 | `display_equalizer` | — | Show equalizer animation |
+| `display_progress` | `value: float` (0.0–1.0) | Show horizontal progress bar, green→yellow→red |
 | `display_solid` | `r`, `g`, `b` (int 0–255) | Fill all LEDs with a solid colour — or set colour via the LED Matrix light entity in HA |
 | `display_off` | — | Turn off the matrix |
 
