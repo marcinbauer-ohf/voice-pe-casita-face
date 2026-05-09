@@ -330,6 +330,14 @@ cards:
           data:
             name: default
       - type: button
+        name: Neutral
+        icon: mdi:emoticon-neutral-outline
+        tap_action:
+          action: call-service
+          service: esphome.home_assistant_voice_display_face
+          data:
+            name: neutral
+      - type: button
         name: Happy
         icon: mdi:emoticon-happy
         tap_action:
@@ -337,6 +345,14 @@ cards:
           service: esphome.home_assistant_voice_display_face
           data:
             name: happy
+      - type: button
+        name: Grin
+        icon: mdi:emoticon-cool
+        tap_action:
+          action: call-service
+          service: esphome.home_assistant_voice_display_face
+          data:
+            name: grin
       - type: button
         name: Sad
         icon: mdi:emoticon-sad
@@ -370,6 +386,22 @@ cards:
           data:
             name: surprised
       - type: button
+        name: Listening
+        icon: mdi:ear-hearing
+        tap_action:
+          action: call-service
+          service: esphome.home_assistant_voice_display_face
+          data:
+            name: listening
+      - type: button
+        name: Talking
+        icon: mdi:message-text
+        tap_action:
+          action: call-service
+          service: esphome.home_assistant_voice_display_face
+          data:
+            name: talking
+      - type: button
         name: Sleeping
         icon: mdi:sleep
         tap_action:
@@ -378,11 +410,210 @@ cards:
           data:
             name: sleeping
       - type: button
+        name: Music
+        icon: mdi:music-note
+        tap_action:
+          action: call-service
+          service: esphome.home_assistant_voice_display_face
+          data:
+            name: music
+      - type: button
+        name: Giggle
+        icon: mdi:emoticon-lol
+        tap_action:
+          action: call-service
+          service: esphome.home_assistant_voice_display_face
+          data:
+            name: giggle
+      - type: button
+        name: Heart
+        icon: mdi:heart
+        tap_action:
+          action: call-service
+          service: esphome.home_assistant_voice_display_face
+          data:
+            name: heart
+      - type: button
+        name: Wink
+        icon: mdi:emoticon-wink
+        tap_action:
+          action: call-service
+          service: esphome.home_assistant_voice_display_face
+          data:
+            name: wink
+      - type: button
+        name: Joy
+        icon: mdi:emoticon-excited
+        tap_action:
+          action: call-service
+          service: esphome.home_assistant_voice_display_face
+          data:
+            name: joy
+      - type: button
+        name: Laugh
+        icon: mdi:emoticon-happy
+        tap_action:
+          action: call-service
+          service: esphome.home_assistant_voice_display_face
+          data:
+            name: laugh
+      - type: button
+        name: Error
+        icon: mdi:emoticon-dead
+        tap_action:
+          action: call-service
+          service: esphome.home_assistant_voice_display_face
+          data:
+            name: error
+      - type: button
+        name: Cry
+        icon: mdi:emoticon-cry
+        tap_action:
+          action: call-service
+          service: esphome.home_assistant_voice_display_face
+          data:
+            name: cry
+      - type: button
+        name: Disconnected
+        icon: mdi:wifi-off
+        tap_action:
+          action: call-service
+          service: esphome.home_assistant_voice_display_face
+          data:
+            name: disconnected
+  - type: markdown
+    content: "## Feedback Icons"
+  - type: grid
+    columns: 4
+    cards:
+      - type: button
+        name: Light On
+        icon: mdi:lightbulb-on
+        tap_action:
+          action: call-service
+          service: esphome.home_assistant_voice_display_face
+          data:
+            name: light_on
+      - type: button
+        name: Light Off
+        icon: mdi:lightbulb-off
+        tap_action:
+          action: call-service
+          service: esphome.home_assistant_voice_display_face
+          data:
+            name: light_off
+      - type: button
+        name: Switch On
+        icon: mdi:toggle-switch
+        tap_action:
+          action: call-service
+          service: esphome.home_assistant_voice_display_face
+          data:
+            name: switch_on
+      - type: button
+        name: Switch Off
+        icon: mdi:toggle-switch-off
+        tap_action:
+          action: call-service
+          service: esphome.home_assistant_voice_display_face
+          data:
+            name: switch_off
+      - type: button
+        name: Locked
+        icon: mdi:lock
+        tap_action:
+          action: call-service
+          service: esphome.home_assistant_voice_display_face
+          data:
+            name: lock_closed
+      - type: button
+        name: Unlocked
+        icon: mdi:lock-open
+        tap_action:
+          action: call-service
+          service: esphome.home_assistant_voice_display_face
+          data:
+            name: lock_open
+      - type: button
+        name: Cover Up
+        icon: mdi:arrow-up-box
+        tap_action:
+          action: call-service
+          service: esphome.home_assistant_voice_display_face
+          data:
+            name: cover_up
+      - type: button
+        name: Cover Down
+        icon: mdi:arrow-down-box
+        tap_action:
+          action: call-service
+          service: esphome.home_assistant_voice_display_face
+          data:
+            name: cover_down
+      - type: button
+        name: Scene
+        icon: mdi:star-shooting
+        tap_action:
+          action: call-service
+          service: esphome.home_assistant_voice_display_face
+          data:
+            name: scene
+      - type: button
+        name: Recording
+        icon: mdi:record-circle
+        tap_action:
+          action: call-service
+          service: esphome.home_assistant_voice_display_face
+          data:
+            name: recording
+  - type: markdown
+    content: "## Animations"
+  - type: grid
+    columns: 3
+    cards:
+      - type: button
+        name: Logo
+        icon: mdi:diamond
+        tap_action:
+          action: call-service
+          service: esphome.home_assistant_voice_display_face
+          data:
+            name: logo
+      - type: button
+        name: DVD
+        icon: mdi:television-play
+        tap_action:
+          action: call-service
+          service: esphome.home_assistant_voice_display_face
+          data:
+            name: dvd
+      - type: button
         name: Equalizer
         icon: mdi:equalizer
         tap_action:
           action: call-service
           service: esphome.home_assistant_voice_display_equalizer
+      - type: button
+        name: Rick
+        icon: mdi:dance-ballroom
+        tap_action:
+          action: call-service
+          service: esphome.home_assistant_voice_display_sprite
+          data:
+            frames: "00000000000000000000000000000000000050280A50280A50280A50280A000000000000000000000000000000000000000000000000000000000000000000FFC88C50280AFFC88CFFC88C50280AFFC88C000000000000000000000000000000000000000000000000000000000000FFC88CFFC88CFFC88CFFC88CFFC88CFFC88C000000000000000000000000000000000000000000000000000000000000000000DC5050DCDCDCDCDCDCDC5050000000000000000000000000000000000000000000000000000000FFC88CFFC88C1E1E50DCDCDCC81E1EC81E1EDCDCDC1E1E50FFC88CFFC88CFFC88CFFC88C0000000000000000000000000000001E1E501E1E501E1E501E1E501E1E501E1E501E1E501E1E500000000000000000000000000000000000000000000000000000000000001E1E501E1E501E1E501E1E500000000000000000000000000000000000000000000000000000000000000000000000001E1E500000000000001E1E50000000000000000000000000000000000000|00000000000000000000000000000050280A50280A50280A50280A50280A000000000000000000000000000000000000000000000000000000000000000000FFC88C50280AFFC88CFFC88CFFC88CFFC88C000000000000000000000000000000000000000000000000000000000000FFC88CFFC88CFFC88CFFC88CFFC88CFFC88C000000000000000000000000000000000000000000000000000000000000DC5050DC5050DCDCDCDCDCDCDC5050DC5050000000000000000000000000000000000000FFC88CFFC88CFFC88CFFC88C1E1E50DCDCDCC81E1EC81E1EDCDCDC1E1E50FFC88CFFC88C0000000000000000000000000000000000000000001E1E501E1E501E1E501E1E501E1E501E1E501E1E501E1E500000000000000000000000000000000000000000000000000000000000001E1E501E1E501E1E501E1E500000000000000000000000000000000000000000000000000000000000000000001E1E500000000000001E1E50000000000000000000000000000000000000000000"
+            frame_count: 2
+            frame_ms: 400
+            fade: false
+      - type: button
+        name: Solid
+        icon: mdi:palette
+        tap_action:
+          action: call-service
+          service: esphome.home_assistant_voice_display_solid
+          data:
+            r: 255
+            g: 255
+            b: 255
   - type: markdown
     content: "## Controls"
   - type: entities
