@@ -8,6 +8,7 @@ A mod for the Voice PE from the Open Home Foundation, fitted with a 16×8 LED ma
 
 > [!WARNING]
 > **This mod will void your Voice PE warranty.** Disassembling the device and soldering to its internals can permanently brick it. Proceed at your own risk. Start by making a backup of your current ESPHome configuration.
+> If you run into issues and want to revert, flash the [official factory firmware](https://esphome.github.io/home-assistant-voice-pe/).
 
 > [!NOTE]
 > This is **not** an official Open Home Foundation (OHF) or Nabu Casa product. It was made by me as a personal project. No support is provided beyond this documentation.
@@ -204,15 +205,15 @@ There are two options — use the pre-built binary for the fastest setup, or com
 
 #### Option A — Flash the pre-built binary (easiest)
 
-1. Download `firmware.factory.bin` from the [latest release](https://github.com/marcinbauer-ohf/voice-pe-casita-face/releases/latest)
+1. Download `casita-led-face-v1.0.0.bin` from the [latest release](https://github.com/marcinbauer-ohf/voice-pe-casita-face/releases/latest)
 2. Connect the Voice PE via USB
-3. Open [ESPHome Web Flasher](https://web.esphome.io) in Chrome or Edge
-4. Click **Connect**, select the device serial port
-5. Click **Install**, then select the downloaded `.bin` file
+3. Open **[https://web.esphome.io](https://web.esphome.io)** in **Chrome or Edge** — Firefox not supported (no Web Serial API)
+4. Click **Connect** → select the device serial port
+5. Click **Install** → select the downloaded `.bin` file
 6. After flashing, the device creates a Wi-Fi hotspot — connect to it and enter your Wi-Fi credentials
 7. Home Assistant will discover the device automatically via mDNS
 
-> The pre-built binary uses HA-managed API key negotiation. No secrets file needed.
+> Pre-built binary uses HA-managed API key negotiation. No secrets file needed.
 
 ---
 
