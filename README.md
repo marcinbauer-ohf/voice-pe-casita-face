@@ -226,9 +226,9 @@ git clone https://github.com/marcinbauer-ohf/voice-pe-casita-face.git
 cd voice-pe-casita-face
 ```
 
-Copy `home-assistant-voice.yaml`, `led_faces.h`, and the `components/` folder into your ESPHome configuration directory (usually `/config/esphome/` on Home Assistant OS).
+Copy `home-assistant-voice.yaml` and `led_faces.h` into your ESPHome configuration directory (usually `/config/esphome/` on Home Assistant OS).
 
-> The `components/const/__init__.py` local override is required to fix a compatibility issue between ESPHome 2026.x and the Voice PE external components. Without it the firmware will not compile.
+> Requires ESPHome 2026.6.0 or newer, which the upstream Voice PE package enforces. Earlier releases of this project shipped a `components/const/__init__.py` override to work around a missing `KEY_METADATA` constant; that constant is now in ESPHome itself, and keeping the override breaks the build (see troubleshooting below).
 
 In your ESPHome `secrets.yaml`:
 
@@ -786,9 +786,9 @@ Faces are defined in `led_faces.h` as sparse pixel arrays in `{x, y, R, G, B}` f
 | Device offline after flash | Wi-Fi credentials wrong in `secrets.yaml` |
 | Faces show but dim | Check the `Matrix Brightness` slider, and whether `Matrix Auto Dim` has dimmed it — see [Auto dim](#auto-dim) |
 | Device reboots randomly | Power supply underpowered for matrix current draw |
-| `Cannot import KEY_METADATA` compile error | `components/` folder missing — copy it to your ESPHome config directory alongside the YAML |
+| `Cannot import KEY_METADATA` compile error | ESPHome too old — upgrade to 2026.6.0 or newer. Do not add a local `const` override; it causes the error below |
 | Default face not showing after boot | Re-flash — this was a known bug fixed in the current firmware |
-| Wake word not working after flash | Check that the `components/const/__init__.py` override is present — a wrong version breaks the voice kit |
+| `Platform missing. You must include one of the available platform keys:` with `esp32` absent from the list | A local `external_components` override of `const` is shadowing ESPHome's own, which drops the `esp32` platform. Remove the override and the `components/` folder |
 
 ---
 

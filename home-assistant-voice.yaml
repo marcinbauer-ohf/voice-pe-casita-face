@@ -5,12 +5,6 @@ substitutions:
 packages:
   Nabu Casa.Home Assistant Voice PE: github://esphome/home-assistant-voice-pe/home-assistant-voice.yaml
 
-external_components:
-  - source:
-      type: local
-      path: components
-    components: [const]
-
 esphome:
   name: ${name}
   name_add_mac_suffix: false
