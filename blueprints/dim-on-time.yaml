@@ -2,6 +2,8 @@ blueprint:
   name: "Casita – Dim display on fixed time"
   description: >
     Dim the Voice PE Casita display at a set time and restore brightness at another time.
+    Note: this moves the *maximum* brightness, so it acts as a night ceiling on
+    top of the device's own Auto Dim — idle dimming keeps working underneath it.
   domain: automation
   input:
     brightness_entity:
