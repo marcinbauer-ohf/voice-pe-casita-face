@@ -67,7 +67,7 @@ api:
         - globals.set:
             id: scroll_pos
             value: '16'
-        - lambda: id(matrix_brightness).make_call().set_value(50).perform();
+        - lambda: id(last_active_ms) = millis();
     - service: display_sprite
       variables:
         frames: string
@@ -90,6 +90,7 @@ api:
         - globals.set:
             id: sprite_fade
             value: !lambda 'return fade;'
+        - lambda: id(last_active_ms) = millis();
     - service: display_off
       then:
         - globals.set:
@@ -105,7 +106,7 @@ api:
         - globals.set:
             id: progress_value
             value: !lambda 'return value;'
-        - lambda: id(matrix_brightness).make_call().set_value(50).perform();
+        - lambda: id(last_active_ms) = millis();
     - service: display_volume
       variables:
         volume: float
@@ -115,7 +116,7 @@ api:
             if (millis() - id(boot_complete_ms) < 10000) return;
             id(volume_level) = volume;
             id(display_mode) = 9;
-            id(matrix_brightness).make_call().set_value(50).perform();
+            id(last_active_ms) = millis();
         - script.execute: volume_return
     - service: display_face_briefly
       variables:
@@ -125,10 +126,9 @@ api:
         - lambda: |-
             if (!id(boot_complete)) return;
             id(is_sleeping) = false;
-            id(idle_since_ms) = 0;
+            id(last_active_ms) = millis();
             id(display_mode) = 5;
             id(face_name) = name;
-            id(matrix_brightness).make_call().set_value(50).perform();
         - script.execute:
             id: face_briefly_return
             duration: !lambda 'return duration;'
@@ -142,14 +142,13 @@ api:
             value: '"default"'
         - lambda: |-
             id(is_sleeping) = false;
-            id(idle_since_ms) = 0;
-            id(matrix_brightness).make_call().set_value(50).perform();
+            id(last_active_ms) = millis();
     - service: display_equalizer
       then:
         - globals.set:
             id: display_mode
             value: '7'
-        - lambda: id(matrix_brightness).make_call().set_value(50).perform();
+        - lambda: id(last_active_ms) = millis();
     - service: display_face
       variables:
         name: string
@@ -162,8 +161,7 @@ api:
             value: !lambda 'return name;'
         - lambda: |-
             id(is_sleeping) = false;
-            id(idle_since_ms) = 0;
-            id(matrix_brightness).make_call().set_value(50).perform();
+            id(last_active_ms) = millis();
     - service: display_solid
       variables:
         r: int
@@ -182,7 +180,7 @@ api:
         - globals.set:
             id: solid_b
             value: !lambda 'return b;'
-        - lambda: id(matrix_brightness).make_call().set_value(50).perform();
+        - lambda: id(last_active_ms) = millis();
 
 wifi:
   ssid: !secret wifi_ssid
@@ -225,7 +223,7 @@ globals:
     type: bool
     restore_value: false
     initial_value: 'false'
-  - id: idle_since_ms
+  - id: last_active_ms
     type: uint32_t
     restore_value: false
     initial_value: '0'
@@ -307,6 +305,14 @@ text:
     max_length: 255
     mode: text
 
+switch:
+  - platform: template
+    name: "Matrix Auto Dim"
+    id: matrix_auto_dim
+    icon: "mdi:brightness-auto"
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+
 button:
   - platform: template
     name: "Send Matrix Message"
@@ -317,7 +323,7 @@ button:
           id(display_mode) = 0;
           id(scroll_text) = id(matrix_message).state;
           id(scroll_pos) = 16;
-          id(matrix_brightness).make_call().set_value(50).perform();
+          id(last_active_ms) = millis();
 
 font:
   - file: "gfonts://Pixelify Sans"
@@ -354,7 +360,7 @@ number:
     name: "Matrix Dim Brightness"
     id: matrix_dim_brightness
     icon: "mdi:brightness-3"
-    min_value: 1
+    min_value: 0
     max_value: 100
     step: 1
     optimistic: true
@@ -362,6 +368,18 @@ number:
     initial_value: 10
     unit_of_measurement: "%"
     mode: slider
+  - platform: template
+    name: "Matrix Dim Delay"
+    id: matrix_dim_delay
+    icon: "mdi:timer-sand"
+    min_value: 5
+    max_value: 1800
+    step: 5
+    optimistic: true
+    restore_value: true
+    initial_value: 20
+    unit_of_measurement: "s"
+    mode: box
   - platform: template
     name: "Solid Red"
     id: solid_r_entity
@@ -467,9 +485,16 @@ display:
       else if (actual > target) actual = max(actual - 0.02f, target);
       id(brightness_actual) = actual;
       if (!id(is_sleeping) && id(boot_complete)) {
-        float slider = id(matrix_brightness).state / 100.0f;
-        if (fabsf(slider - target) > 0.01f) {
-          id(brightness_target) = slider;
+        int va_phase = id(voice_assistant_phase);
+        // 2..5 = waiting/listening/thinking/replying. 10 (not ready) and 11
+        // (error) deliberately do not count: HA being down must still dim.
+        if (va_phase >= 2 && va_phase <= 5) id(last_active_ms) = millis();
+        bool dim_now = id(matrix_auto_dim).state &&
+                       (millis() - id(last_active_ms)) >= (uint32_t)id(matrix_dim_delay).state * 1000;
+        float want = (dim_now ? id(matrix_dim_brightness).state
+                              : id(matrix_brightness).state) / 100.0f;
+        if (fabsf(want - target) > 0.005f) {
+          id(brightness_target) = want;
         }
       }
       bool sleeping_now = id(is_sleeping);
@@ -484,9 +509,8 @@ display:
         int ph = id(voice_assistant_phase);
         if (ph != 1 && ph != 10) {
           id(is_sleeping) = false;
-          id(idle_since_ms) = 0;
+          id(last_active_ms) = millis();
           id(display_mode) = 5;
-          id(matrix_brightness).make_call().set_value(50).perform();
           mode = 5;
         } else {
           return;
@@ -703,7 +727,7 @@ display:
         if (id(brightness_actual) <= 0.01f) {
           id(display_mode) = 5;
           id(face_name) = "default";
-          id(matrix_brightness).make_call().set_value(50).perform();
+          id(last_active_ms) = millis();
           id(boot_complete) = true;
           id(boot_complete_ms) = millis();
         }

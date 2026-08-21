@@ -205,7 +205,7 @@ There are two options — use the pre-built binary for the fastest setup, or com
 
 #### Option A — Flash the pre-built binary (easiest)
 
-1. Download `casita-led-face-v1.0.0.bin` from the [latest release](https://github.com/marcinbauer-ohf/voice-pe-casita-face/releases/latest)
+1. Download `casita-led-face-v1.0.1.bin` from the [latest release](https://github.com/marcinbauer-ohf/voice-pe-casita-face/releases/latest)
 2. Connect the Voice PE via USB
 3. Open **[https://web.esphome.io](https://web.esphome.io)** in **Chrome or Edge** — Firefox not supported (no Web Serial API)
 4. Click **Connect** → select the device serial port
@@ -650,6 +650,10 @@ cards:
         name: Brightness
       - entity: number.home_assistant_voice_matrix_dim_brightness
         name: Dim Brightness
+      - entity: switch.home_assistant_voice_matrix_auto_dim
+        name: Auto Dim
+      - entity: number.home_assistant_voice_matrix_dim_delay
+        name: Dim Delay
       - entity: number.home_assistant_voice_scroll_speed
         name: Scroll Speed
 ```
@@ -692,13 +696,33 @@ After flashing, the device exposes these entities in Home Assistant:
 
 | Entity | Type | Description |
 |---|---|---|
-| `Matrix Brightness` | Number (slider) | Overall display brightness 5–100% |
-| `Matrix Dim Brightness` | Number (slider) | Stored dim level used by dim blueprints 1–100% |
+| `Matrix Brightness` | Number (slider) | Maximum display brightness 5–100% |
+| `Matrix Dim Brightness` | Number (slider) | Brightness while dimmed 0–100% (`0` = LEDs fully off) |
+| `Matrix Auto Dim` | Switch | Dim the display on its own after an idle period (on by default) |
+| `Matrix Dim Delay` | Number (box) | Idle time before dimming, 5–1800 s (default 20 s) |
 | `Scroll Speed` | Number (slider) | Text scroll speed in ms per step |
 | `Solid Red` / `Solid Green` / `Solid Blue` | Number (slider) | RGB values for solid colour mode 0–255 |
 | `Matrix Message` | Text | Message to send to the scrolling display |
 | `Send Matrix Message` | Button | Sends current `Matrix Message` value to the display |
 | `Matrix Display Status` | Sensor | Current display mode/face as a string |
+
+---
+
+## Auto dim
+
+The device dims itself. `Matrix Auto Dim` runs the whole thing on the ESP —
+no automation, no Home Assistant involved:
+
+- The display sits at `Matrix Brightness` while the voice assistant is
+  **waiting, listening, thinking or replying**, and while any display service
+  (`display_text`, `display_sprite`, `display_face`, …) has recently been called.
+- After `Matrix Dim Delay` seconds with none of that, it fades to
+  `Matrix Dim Brightness`. Set that to `0` to switch the LEDs off entirely —
+  useful in a bedroom.
+- Waking it back up is local, so it comes back to full brightness even when
+  Home Assistant is unreachable. Assistant states *not ready* and *error* do
+  **not** count as activity, so an offline HA dims instead of glowing all night.
+- Turn the switch off to hold the display at `Matrix Brightness` permanently.
 
 ---
 
@@ -713,6 +737,10 @@ Ready-made blueprints are in the `blueprints/` folder. Copy them to `/config/blu
 | `dim-on-sun.yaml` | Dim the display at sunset and restore at sunrise |
 
 Dim blueprints use entity pickers for **Matrix Brightness** and **Matrix Dim Brightness** — set your dim level in the `Matrix Dim Brightness` slider on the device, then pick it in the blueprint. Normal/restore brightness is a number input in the blueprint itself. Copy blueprints to `/config/blueprints/automation/voice-pe-casita-face/` and reload via **Settings → Automations → Blueprints**.
+
+Note that these blueprints move the **maximum** brightness, so they act as a
+night ceiling on top of [Auto dim](#auto-dim) — idle dimming keeps working
+underneath them. Dimming *when idle* no longer needs a blueprint at all.
 
 ---
 
@@ -756,7 +784,7 @@ Faces are defined in `led_faces.h` as sparse pixel arrays in `{x, y, R, G, B}` f
 | Matrix stays dark | Check data line wiring and the 330 Ω resistor |
 | Garbled / wrong pixels | Panels connected in wrong order or wrong data-out tap |
 | Device offline after flash | Wi-Fi credentials wrong in `secrets.yaml` |
-| Faces show but dim | Check `Matrix Brightness` slider in HA entity |
+| Faces show but dim | Check the `Matrix Brightness` slider, and whether `Matrix Auto Dim` has dimmed it — see [Auto dim](#auto-dim) |
 | Device reboots randomly | Power supply underpowered for matrix current draw |
 | `Cannot import KEY_METADATA` compile error | `components/` folder missing — copy it to your ESPHome config directory alongside the YAML |
 | Default face not showing after boot | Re-flash — this was a known bug fixed in the current firmware |
