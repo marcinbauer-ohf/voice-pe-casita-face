@@ -38,15 +38,6 @@ esphome:
 api:
   encryption:
     key: !secret api_encryption_key
-  on_client_connected:
-    - lambda: |-
-        id(ha_connected) = true;
-        if (id(display_mode) == 11) {
-          id(display_mode) = 5;
-          id(face_name) = "default";
-        }
-  on_client_disconnected:
-    - lambda: id(ha_connected) = false;
   services:
     - service: display_text
       variables:
@@ -241,10 +232,6 @@ globals:
     type: float
     restore_value: false
     initial_value: '0.5'
-  - id: ha_connected
-    type: bool
-    restore_value: false
-    initial_value: 'false'
   - id: progress_value
     type: float
     restore_value: false
@@ -510,9 +497,16 @@ display:
           return;
         }
       }
-      if (id(boot_complete) && !id(ha_connected) && (millis() - id(boot_complete_ms) > 15000)) {
+      bool api_up = id(api_id).is_connected();
+      if (id(boot_complete) && !api_up && (millis() - id(boot_complete_ms) > 15000)) {
         mode = 11;
         id(display_mode) = 11;
+      } else if (api_up && id(display_mode) == 11) {
+        // recover here rather than in on_client_connected: polling is
+        // self-healing, an edge callback can be missed.
+        id(display_mode) = 5;
+        id(face_name) = "default";
+        mode = 5;
       }
       it.fill(Color::BLACK);
       if (mode == 0) {

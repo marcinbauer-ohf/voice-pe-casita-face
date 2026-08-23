@@ -205,7 +205,7 @@ There are two options — use the pre-built binary for the fastest setup, or com
 
 #### Option A — Flash the pre-built binary (easiest)
 
-1. Download `casita-led-face-v1.0.1.bin` from the [latest release](https://github.com/marcinbauer-ohf/voice-pe-casita-face/releases/latest)
+1. Download `casita-led-face-v1.0.2.bin` from the [latest release](https://github.com/marcinbauer-ohf/voice-pe-casita-face/releases/latest)
 2. Connect the Voice PE via USB
 3. Open **[https://web.esphome.io](https://web.esphome.io)** in **Chrome or Edge** — Firefox not supported (no Web Serial API)
 4. Click **Connect** → select the device serial port
